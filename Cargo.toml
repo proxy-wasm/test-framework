@@ -1,0 +1,18 @@
+[package]
+name = "proxy-wasm-abi-test-harness"
+version = "0.1.0"
+authors = ["Christopher Agia <chrisagia@google.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wasmtime = "0.18.0"
+anyhow = "1.0.31"
+lazy_static = "1.4.0"
+chrono = "0.4"
+more-asserts = "0.2.1"
+rand = "0.7.3"
+
+[patch.crates-io]
+wasmtime = {path = '/usr/local/google/home/chrisagia/.cargo/registry/src/github.com-1ecc6299db9ec823/wasmtime-0.18.0' }
