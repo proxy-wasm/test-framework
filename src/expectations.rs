@@ -63,8 +63,8 @@ pub struct Expect {
     remove_header_map_value: Vec<(i32, String)>,
     add_header_map_value: Vec<(i32, String, String)>,
 
-    send_local_response: Vec<(i32, String, Bytes, i32)>,
-    http_call: Vec<(String, Bytes, String, Bytes, Duration, u32)>,
+    send_local_response: Vec<(i32, Option<String>, Bytes, i32)>,
+    http_call: Vec<(String, Bytes, Option<String>, Bytes, Duration, u32)>,
 }
 
 impl Expect {
@@ -82,7 +82,6 @@ impl Expect {
             replace_header_map_value: vec![],
             remove_header_map_value: vec![],
             add_header_map_value: vec![],
-            
             send_local_response: vec![],
             http_call: vec![],
         }
@@ -236,32 +235,32 @@ impl Expect {
         }
     }    
 
-    pub fn set_expect_send_local_response(&mut self, status_code: i32, body: &str, headers: Vec<(&str, &str)>, grpc_status: i32) {
+    pub fn set_expect_send_local_response(&mut self, status_code: i32, body: Option<&str>, headers: Vec<(&str, &str)>, grpc_status: i32) {
             self.expect_count += 1;
-            self.send_local_response.push((status_code, body.to_string(), serialize_map(headers), grpc_status))
+            self.send_local_response.push((status_code, body.map(|data| data.to_string()), serialize_map(headers), grpc_status))
         }
 
-    pub fn get_expect_send_local_response(&mut self, status_code: i32, body: &str, headers: Bytes, grpc_status: i32) {
+    pub fn get_expect_send_local_response(&mut self, status_code: i32, body: Option<&str>, headers: Bytes, grpc_status: i32) {
         match self.send_local_response.len() {
             0 => {},
             _ => {self.expect_count -= 1;
                 let local_response_tuple = self.send_local_response.remove(0);
                 assert_eq!(status_code, local_response_tuple.0);
-                assert_eq!(body, &local_response_tuple.1);
+                assert_eq!(body.unwrap_or("default"), &local_response_tuple.1.unwrap_or(String::from("default")));
                 assert_eq!(headers, local_response_tuple.2);
                 assert_eq!(grpc_status, local_response_tuple.3);    
             }
         }
     }
 
-    pub fn set_expect_http_call(&mut self, upstream: &str, headers: Vec<(&str, &str)>, body: &str, 
+    pub fn set_expect_http_call(&mut self, upstream: &str, headers: Vec<(&str, &str)>, body: Option<&str>, 
         trailers: Vec<(&str, &str)>, timeout: u64, token_id: u32) {
         self.expect_count += 1;
-        self.http_call.push((upstream.to_string(), serialize_map(headers), body.to_string(), 
+        self.http_call.push((upstream.to_string(), serialize_map(headers), body.map(|data| data.to_string()), 
             serialize_map(trailers), Duration::from_millis(timeout), token_id));
     }
 
-    pub fn get_expect_http_call(&mut self, upstream: &str, headers: &[u8], body: &str, 
+    pub fn get_expect_http_call(&mut self, upstream: &str, headers: &[u8], body: Option<&str>, 
         trailers: &[u8], timeout: i32) -> Option<u32> {
         match self.http_call.len() {
             0 => None,
@@ -269,7 +268,7 @@ impl Expect {
                 let http_call_tuple = self.http_call.remove(0);
                 assert_eq!(upstream, &http_call_tuple.0);
                 assert_eq!(headers, &http_call_tuple.1[..]);
-                assert_eq!(body, &http_call_tuple.2);
+                assert_eq!(body.unwrap_or("default"), &http_call_tuple.2.unwrap_or(String::from("default")));
                 assert_eq!(trailers, &http_call_tuple.3[..]);
                 assert_eq!(timeout, http_call_tuple.4.as_millis() as i32);
                 Some(http_call_tuple.5)

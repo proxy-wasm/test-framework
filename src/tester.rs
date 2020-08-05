@@ -146,12 +146,12 @@ impl Tester {
         self
     }
 
-    pub fn expect_set_send_local_response(&mut self, status_code: i32, body: &str, headers: Vec<(&str, &str)>, grpc_status: i32) -> &mut Self {
+    pub fn expect_send_local_response(&mut self, status_code: i32, body: Option<&str>, headers: Vec<(&str, &str)>, grpc_status: i32) -> &mut Self {
         self.get_expect_handle().staged.set_expect_send_local_response(status_code, body, headers, grpc_status);
         self
     }
 
-    pub fn expect_set_http_call(&mut self, upstream: &'static str, headers: Vec<(&'static str, &'static str)>, body: &'static str, 
+    pub fn expect_http_call(&mut self, upstream: &'static str, headers: Vec<(&'static str, &'static str)>, body: Option<&'static str>, 
         trailers: Vec<(&'static str, &'static str)>, timeout: u64) -> ExpectHttpCall {
             ExpectHttpCall::expecting(self, upstream, headers, body, trailers, timeout)
     }
@@ -587,66 +587,66 @@ impl Tester {
 }
 
 
-pub trait WasmExpect<'a> {
-    type ReturnType;
-    fn new(tester: &'a mut Tester) -> Self;
-    fn expect(&mut self, return_type: Self::ReturnType);
-}
+// pub trait WasmExpect<'a> {
+//     type ReturnType;
+//     fn new(tester: &'a mut Tester) -> Self;
+//     fn expect(&mut self, return_type: Self::ReturnType);
+// }
 
 
-pub struct ExpectNone<'a> {
-    tester: &'a mut Tester
-}
+// pub struct ExpectNone<'a> {
+//     tester: &'a mut Tester
+// }
 
-impl<'a> WasmExpect<'a> for ExpectNone<'a> {
-    type ReturnType = Option<()>;
+// impl<'a> WasmExpect<'a> for ExpectNone<'a> {
+//     type ReturnType = Option<()>;
     
-    fn new(tester: &'a mut Tester) -> ExpectNone<'a> {
-        ExpectNone {
-            tester: tester
-        }
-    }
+//     fn new(tester: &'a mut Tester) -> ExpectNone<'a> {
+//         ExpectNone {
+//             tester: tester
+//         }
+//     }
 
-    fn expect(&mut self, return_type: Self::ReturnType) {
+//     fn expect(&mut self, return_type: Self::ReturnType) {
 
-    }
-}
-
-
-pub struct ExpectBool<'a> {
-    tester: &'a mut Tester
-}
-
-impl<'a> WasmExpect<'a> for ExpectBool<'a> {
-    type ReturnType = bool;
-
-    fn new(tester: &'a mut Tester) -> ExpectBool<'a> {
-        ExpectBool {
-            tester: tester
-        }
-    }
-
-    fn expect(&mut self, return_type: Self::ReturnType) {
-
-    }
-}
+//     }
+// }
 
 
-pub struct ExpectAction<'a> {
-    tester: &'a mut Tester
-}
+// pub struct ExpectBool<'a> {
+//     tester: &'a mut Tester
+// }
 
-impl<'a> WasmExpect<'a> for ExpectAction<'a> {
-    type ReturnType = Action;
+// impl<'a> WasmExpect<'a> for ExpectBool<'a> {
+//     type ReturnType = bool;
+
+//     fn new(tester: &'a mut Tester) -> ExpectBool<'a> {
+//         ExpectBool {
+//             tester: tester
+//         }
+//     }
+
+//     fn expect(&mut self, return_type: Self::ReturnType) {
+
+//     }
+// }
+
+
+// pub struct ExpectAction<'a> {
+//     tester: &'a mut Tester
+// }
+
+// impl<'a> WasmExpect<'a> for ExpectAction<'a> {
+//     type ReturnType = Action;
     
-    fn new(tester: &'a mut Tester) -> ExpectAction<'a> {
-        ExpectAction {
-            tester: tester
-        }
-    }
+//     fn new(tester: &'a mut Tester) -> ExpectAction<'a> {
+//         ExpectAction {
+//             tester: tester
+//         }
+//     }
     
-    fn expect(&mut self, return_type: Self::ReturnType) {
+//     fn expect(&mut self, return_type: Self::ReturnType) {
 
-    }
-}
+//     }
+// }
 

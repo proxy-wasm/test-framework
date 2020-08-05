@@ -585,11 +585,14 @@ fn get_hostfunc(store: &Store, import: &ImportType) -> Option<Func> {
                     };
 
                     unsafe {
-                        let body_data_ptr = mem.data_unchecked()
-                            .get(body_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..body_size as u32 as usize));
-                        let string_body = body_data_ptr.map(|string_msg| std::str::from_utf8(string_msg).unwrap()).unwrap();
-        
+                        let mut string_body: Option<&str> = None;
+                        if body_size > 0 {
+                            let body_data_ptr = mem.data_unchecked()
+                                .get(body_data as u32 as usize..)
+                                .and_then(|arr| arr.get(..body_size as u32 as usize));
+                            string_body = body_data_ptr.map(|string_msg| std::str::from_utf8(string_msg).unwrap());
+                        }
+                                
                         let header_data_ptr = mem.data_unchecked()
                             .get_unchecked(headers_data as u32 as usize..
                                 headers_data as u32 as usize + headers_size as u32 as usize);
@@ -599,8 +602,8 @@ fn get_hostfunc(store: &Store, import: &ImportType) -> Option<Func> {
                             header_data_ptr.to_vec(), grpc_status);
 
                         println!("=>   proxy_send_local_response | status_code:  {}", status_code);
+                        println!("                               | body_data:    {}", string_body.unwrap_or("None"));
                         println!("                               | headers_data: {:?}", deserialized_header);
-                        println!("                               | body_data:    {}", string_body);
                         println!("                               | grpc_status:  {}", grpc_status);
                     
                     }
@@ -641,11 +644,14 @@ fn get_hostfunc(store: &Store, import: &ImportType) -> Option<Func> {
                             .and_then(|arr| arr.get(..upstream_size as u32 as usize));
                         let string_upstream = upstream_data_ptr.map(|string_msg| std::str::from_utf8(string_msg).unwrap()).unwrap();
 
-                        let body_data_ptr = mem.data_unchecked()
-                            .get(body_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..body_size as u32 as usize));
-                        let string_body = body_data_ptr.map(|string_msg| std::str::from_utf8(string_msg).unwrap()).unwrap();
-        
+                        let mut string_body: Option<&str> = None;
+                        if body_size > 0 {
+                            let body_data_ptr = mem.data_unchecked()
+                                .get(body_data as u32 as usize..)
+                                .and_then(|arr| arr.get(..body_size as u32 as usize));
+                            string_body = body_data_ptr.map(|string_msg| std::str::from_utf8(string_msg).unwrap());
+                        }
+
                         let header_data_ptr = mem.data_unchecked()
                             .get_unchecked(headers_data as u32 as usize..
                                 headers_data as u32 as usize + headers_size as u32 as usize);
@@ -669,7 +675,7 @@ fn get_hostfunc(store: &Store, import: &ImportType) -> Option<Func> {
                         
                         println!("=>   proxy_http_call | upstream_data:  {}", string_upstream);
                         println!("                     | headers_data:   {:?}", deserialized_header);
-                        println!("                     | body_data:      {}", string_body);
+                        println!("                     | body_data:      {}", string_body.unwrap_or("None"));
                         println!("                     | trailers_data:  {:?}", deserialized_trailer);
                         println!("                     | timeout:        {:?}", timeout);
                     }

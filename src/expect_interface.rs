@@ -137,7 +137,7 @@ pub struct ExpectHttpCall<'a> {
     tester: &'a mut Tester,
     upstream: &'a str,
     headers: Option<Vec<(&'a str, &'a str)>>,
-    body: &'a str,
+    body: Option<&'a str>,
     trailers: Option<Vec<(&'a str, &'a str)>>,
     timeout: u64,
 }
@@ -145,7 +145,7 @@ pub struct ExpectHttpCall<'a> {
 impl<'a> ExpectHttpCall<'a> {
 
     pub fn expecting(tester: &'a mut Tester, upstream: &'a str, headers: Vec<(&'a str, &'a str)>, 
-        body: &'a str, trailers: Vec<(&'a str, &'a str)>, timeout: u64) -> ExpectHttpCall<'a> {
+        body: Option<&'a str>, trailers: Vec<(&'a str, &'a str)>, timeout: u64) -> ExpectHttpCall<'a> {
             ExpectHttpCall {
                 tester: tester,
                 upstream: upstream,

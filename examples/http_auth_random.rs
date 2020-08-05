@@ -32,7 +32,9 @@ fn main() -> Result<()>{
     http_auth_random.call_proxy_on_context_create(2, 1)
                     .execute_and_expect(None)?;
 
+    let http_call_headers = vec![(":method", "GET"), (":path", "/bytes/1"), (":authority", "httpbin.org")];
     http_auth_random.call_proxy_on_request_headers(2, 0)
+                    .expect_http_call("httpbin", http_call_headers, None, vec![], 5 * 10u64.pow(3)).returning(0)
                     .execute_and_expect(Some(1))?;
 
     let buffer_data = "custom_developer_body";
@@ -44,8 +46,8 @@ fn main() -> Result<()>{
     http_auth_random.call_proxy_on_response_headers(2, 0)
                     .execute_and_expect(Some(0))?;
     
-    http_auth_random.call_proxy_on_http_call_response(2, 0, 0, 8, 0)
-                    .execute_and_expect(None)?;
+    // http_auth_random.call_proxy_on_http_call_response(2, 0, 0, 8, 0)
+    //                 .execute_and_expect(None)?;
     
     return Ok(());
 }
