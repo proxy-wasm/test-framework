@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #[repr(u32)]
 #[derive(Debug)]
 pub enum LogLevel {

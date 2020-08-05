@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 use crate::tester::Tester;
-
 
 pub struct DefaultBufferBytes<'a> {
     tester: &'a mut Tester,
@@ -22,7 +20,6 @@ pub struct DefaultBufferBytes<'a> {
 }
 
 impl<'a> DefaultBufferBytes<'a> {
-
     pub fn expecting(tester: &'a mut Tester, buffer_type: i32) -> DefaultBufferBytes {
         DefaultBufferBytes {
             tester: tester,
@@ -31,11 +28,13 @@ impl<'a> DefaultBufferBytes<'a> {
     }
 
     pub fn returning(&mut self, buffer_data: &str) -> &mut Tester {
-        self.tester.get_settings_handle().staged.set_buffer_bytes(self.buffer_type, buffer_data);
+        self.tester
+            .get_settings_handle()
+            .staged
+            .set_buffer_bytes(self.buffer_type, buffer_data);
         self.tester
     }
 }
-
 
 pub struct DefaultHeaderMapPairs<'a> {
     tester: &'a mut Tester,
@@ -43,7 +42,6 @@ pub struct DefaultHeaderMapPairs<'a> {
 }
 
 impl<'a> DefaultHeaderMapPairs<'a> {
-
     pub fn expecting(tester: &'a mut Tester, map_type: i32) -> DefaultHeaderMapPairs {
         DefaultHeaderMapPairs {
             tester: tester,
@@ -52,7 +50,10 @@ impl<'a> DefaultHeaderMapPairs<'a> {
     }
 
     pub fn returning(&mut self, header_map_pairs: Vec<(&str, &str)>) -> &mut Tester {
-        self.tester.get_settings_handle().staged.set_header_map_pairs(self.map_type, header_map_pairs);
+        self.tester
+            .get_settings_handle()
+            .staged
+            .set_header_map_pairs(self.map_type, header_map_pairs);
         self.tester
     }
 }

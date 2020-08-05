@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 use crate::tester::Tester;
 
 // As of now, the following expectations do not require "fn returning()" implementations and hence
@@ -22,25 +21,23 @@ use crate::tester::Tester;
    proxy_add_header_map_value(), proxy_send_loca_response(), etc.
 */
 
-
 pub struct ExpectGetCurrentTimeNanos<'a> {
     tester: &'a mut Tester,
 }
 
 impl<'a> ExpectGetCurrentTimeNanos<'a> {
-
     pub fn expecting(tester: &'a mut Tester) -> ExpectGetCurrentTimeNanos {
-        ExpectGetCurrentTimeNanos {
-            tester: tester,
-        }
+        ExpectGetCurrentTimeNanos { tester: tester }
     }
 
     pub fn returning(&mut self, current_time_nanos: u64) -> &mut Tester {
-        self.tester.get_expect_handle().staged.set_expect_get_current_time_nanos(current_time_nanos);
+        self.tester
+            .get_expect_handle()
+            .staged
+            .set_expect_get_current_time_nanos(current_time_nanos);
         self.tester
     }
 }
-
 
 pub struct ExpectGetBufferBytes<'a> {
     tester: &'a mut Tester,
@@ -48,7 +45,6 @@ pub struct ExpectGetBufferBytes<'a> {
 }
 
 impl<'a> ExpectGetBufferBytes<'a> {
-
     pub fn expecting(tester: &'a mut Tester, buffer_type: i32) -> ExpectGetBufferBytes {
         ExpectGetBufferBytes {
             tester: tester,
@@ -57,12 +53,13 @@ impl<'a> ExpectGetBufferBytes<'a> {
     }
 
     pub fn returning(&mut self, buffer_data: &str) -> &mut Tester {
-        self.tester.get_expect_handle().staged.set_expect_get_buffer_bytes(
-            self.buffer_type, buffer_data);
+        self.tester
+            .get_expect_handle()
+            .staged
+            .set_expect_get_buffer_bytes(self.buffer_type, buffer_data);
         self.tester
     }
 }
-
 
 pub struct ExpectGetHeaderMapPairs<'a> {
     tester: &'a mut Tester,
@@ -70,7 +67,6 @@ pub struct ExpectGetHeaderMapPairs<'a> {
 }
 
 impl<'a> ExpectGetHeaderMapPairs<'a> {
-
     pub fn expecting(tester: &'a mut Tester, map_type: i32) -> ExpectGetHeaderMapPairs {
         ExpectGetHeaderMapPairs {
             tester: tester,
@@ -79,12 +75,13 @@ impl<'a> ExpectGetHeaderMapPairs<'a> {
     }
 
     pub fn returning(&mut self, header_map_pairs: Vec<(&str, &str)>) -> &mut Tester {
-        self.tester.get_expect_handle().staged.set_expect_get_header_map_pairs(
-            self.map_type, header_map_pairs);
+        self.tester
+            .get_expect_handle()
+            .staged
+            .set_expect_get_header_map_pairs(self.map_type, header_map_pairs);
         self.tester
     }
 }
-
 
 pub struct ExpectSetHeaderMapPairs<'a> {
     tester: &'a mut Tester,
@@ -92,7 +89,6 @@ pub struct ExpectSetHeaderMapPairs<'a> {
 }
 
 impl<'a> ExpectSetHeaderMapPairs<'a> {
-
     pub fn expecting(tester: &'a mut Tester, map_type: i32) -> ExpectSetHeaderMapPairs {
         ExpectSetHeaderMapPairs {
             tester: tester,
@@ -101,12 +97,13 @@ impl<'a> ExpectSetHeaderMapPairs<'a> {
     }
 
     pub fn returning(&mut self, header_map_pairs: Vec<(&str, &str)>) -> &mut Tester {
-        self.tester.get_expect_handle().staged.set_expect_set_header_map_pairs(
-            self.map_type, header_map_pairs);
+        self.tester
+            .get_expect_handle()
+            .staged
+            .set_expect_set_header_map_pairs(self.map_type, header_map_pairs);
         self.tester
     }
 }
-
 
 pub struct ExpectGetHeaderMapValue<'a> {
     tester: &'a mut Tester,
@@ -115,8 +112,11 @@ pub struct ExpectGetHeaderMapValue<'a> {
 }
 
 impl<'a> ExpectGetHeaderMapValue<'a> {
-
-    pub fn expecting(tester: &'a mut Tester, map_type: i32, header_map_key: &'static str) -> ExpectGetHeaderMapValue<'a> {
+    pub fn expecting(
+        tester: &'a mut Tester,
+        map_type: i32,
+        header_map_key: &'static str,
+    ) -> ExpectGetHeaderMapValue<'a> {
         ExpectGetHeaderMapValue {
             tester: tester,
             map_type: map_type,
@@ -125,13 +125,13 @@ impl<'a> ExpectGetHeaderMapValue<'a> {
     }
 
     pub fn returning(&mut self, header_map_value: &str) -> &mut Tester {
-        self.tester.get_expect_handle().staged.set_expect_get_header_map_value(
-            self.map_type, self.header_map_key, header_map_value);
+        self.tester
+            .get_expect_handle()
+            .staged
+            .set_expect_get_header_map_value(self.map_type, self.header_map_key, header_map_value);
         self.tester
     }
 }
-
-
 
 pub struct ExpectHttpCall<'a> {
     tester: &'a mut Tester,
@@ -143,23 +143,33 @@ pub struct ExpectHttpCall<'a> {
 }
 
 impl<'a> ExpectHttpCall<'a> {
-
-    pub fn expecting(tester: &'a mut Tester, upstream: &'a str, headers: Vec<(&'a str, &'a str)>, 
-        body: Option<&'a str>, trailers: Vec<(&'a str, &'a str)>, timeout: u64) -> ExpectHttpCall<'a> {
-            ExpectHttpCall {
-                tester: tester,
-                upstream: upstream,
-                headers: Some(headers),
-                body: body,
-                trailers: Some(trailers),
-                timeout: timeout,
-            }
+    pub fn expecting(
+        tester: &'a mut Tester,
+        upstream: &'a str,
+        headers: Vec<(&'a str, &'a str)>,
+        body: Option<&'a str>,
+        trailers: Vec<(&'a str, &'a str)>,
+        timeout: u64,
+    ) -> ExpectHttpCall<'a> {
+        ExpectHttpCall {
+            tester: tester,
+            upstream: upstream,
+            headers: Some(headers),
+            body: body,
+            trailers: Some(trailers),
+            timeout: timeout,
+        }
     }
 
     pub fn returning(&mut self, token_id: u32) -> &mut Tester {
-        self.tester.get_expect_handle().staged.set_expect_http_call(self.upstream, self.headers.take().unwrap(), self.body, 
-            self.trailers.take().unwrap(), self.timeout, token_id);
+        self.tester.get_expect_handle().staged.set_expect_http_call(
+            self.upstream,
+            self.headers.take().unwrap(),
+            self.body,
+            self.trailers.take().unwrap(),
+            self.timeout,
+            token_id,
+        );
         self.tester
     }
-
 }

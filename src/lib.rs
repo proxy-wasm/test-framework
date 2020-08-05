@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #![crate_type = "lib"]
 #![crate_name = "proxy_wasm_abi_test_harness"]
 
@@ -20,8 +19,8 @@ pub mod tester;
 pub mod types;
 pub mod utility;
 
-mod hostcalls;
-mod expectations;
 mod expect_interface;
+mod expectations;
 mod host_settings;
+mod hostcalls;
 mod settings_interface;

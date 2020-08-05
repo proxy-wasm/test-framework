@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
+use crate::hostcalls::serial_utils::{deserialize_map, serialize_map, serialize_property_path};
 use crate::types::*;
-use crate::hostcalls::serial_utils::{serialize_map, deserialize_map, serialize_property_path};
 
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
 
 // Global structure for handling default host behaviour (and high-level expectation setting)
 pub struct HostHandle {
@@ -26,7 +24,6 @@ pub struct HostHandle {
 }
 
 impl HostHandle {
-
     pub fn new() -> HostHandle {
         HostHandle {
             staged: HostSettings::new(),
@@ -42,17 +39,15 @@ impl HostHandle {
     }
 }
 
-
-// Global struct for host environment default settings 
+// Global struct for host environment default settings
 #[derive(Debug)]
 pub struct HostSettings {
-    tick_period_millis: Duration,               
-    header_map_pairs: HashMap<i32, HashMap<String, String>>,                   
+    tick_period_millis: Duration,
+    header_map_pairs: HashMap<i32, HashMap<String, String>>,
     buffer_bytes: HashMap<i32, Bytes>,
 }
 
 impl HostSettings {
-
     pub fn new() -> HostSettings {
         HostSettings {
             tick_period_millis: Duration::new(0, 0),
@@ -78,7 +73,8 @@ impl HostSettings {
     }
 
     pub fn set_buffer_bytes(&mut self, buffer_type: i32, buffer_data: &str) {
-        self.buffer_bytes.insert(buffer_type, buffer_data.as_bytes().to_vec());
+        self.buffer_bytes
+            .insert(buffer_type, buffer_data.as_bytes().to_vec());
     }
 
     pub fn get_buffer_bytes(&self, buffer_type: i32) -> Bytes {
@@ -100,7 +96,10 @@ impl HostSettings {
 
     pub fn get_header_map_pairs(&self, map_type: i32) -> Bytes {
         let header_map_pairs = self.header_map_pairs.get(&map_type).unwrap();
-        let header_map_pairs = header_map_pairs.iter().map(|(k, v)| (k as &str, v as &str)).collect();
+        let header_map_pairs = header_map_pairs
+            .iter()
+            .map(|(k, v)| (k as &str, v as &str))
+            .collect();
         serialize_map(header_map_pairs)
     }
 
@@ -110,7 +109,12 @@ impl HostSettings {
         header_map_value.map(|str_val| str_val.to_string())
     }
 
-    pub fn replace_header_map_value(&mut self, map_type: i32, header_map_key: &str, header_map_value: &str) {
+    pub fn replace_header_map_value(
+        &mut self,
+        map_type: i32,
+        header_map_key: &str,
+        header_map_value: &str,
+    ) {
         let header_map = self.header_map_pairs.get_mut(&map_type).unwrap();
         header_map.insert(header_map_key.to_string(), header_map_value.to_string());
     }
@@ -120,68 +124,114 @@ impl HostSettings {
         header_map.remove(header_map_key);
     }
 
-    pub fn add_header_map_value(&mut self, map_type: i32, header_map_key: &str, header_map_value: &str) {
+    pub fn add_header_map_value(
+        &mut self,
+        map_type: i32,
+        header_map_key: &str,
+        header_map_value: &str,
+    ) {
         let header_map = self.header_map_pairs.get_mut(&map_type).unwrap();
         header_map.insert(header_map_key.to_string(), header_map_value.to_string());
     }
 }
 
-
 // functions to retrieve default values
 pub fn default_header_map_pairs() -> HashMap<i32, HashMap<String, String>> {
     let mut default_header_maps = HashMap::new();
-    
+
     let mut http_on_request_headers = HashMap::new();
     http_on_request_headers.insert(":method".to_string(), "GET".to_string());
-    http_on_request_headers.insert(":path".to_string(), "/default/request/headers/path".to_string());
+    http_on_request_headers.insert(
+        ":path".to_string(),
+        "/default/request/headers/path".to_string(),
+    );
     http_on_request_headers.insert(":authority".to_string(), "abi_test_harness".to_string());
     default_header_maps.insert(MapType::HttpRequestHeaders as i32, http_on_request_headers);
 
     let mut http_on_request_trailers = HashMap::new();
     http_on_request_trailers.insert(":method".to_string(), "GET".to_string());
-    http_on_request_trailers.insert(":path".to_string(), "/default/request/trailers/path".to_string());
+    http_on_request_trailers.insert(
+        ":path".to_string(),
+        "/default/request/trailers/path".to_string(),
+    );
     http_on_request_trailers.insert(":authority".to_string(), "abi_test_harness".to_string());
-    default_header_maps.insert(MapType::HttpRequestTrailers as i32, http_on_request_trailers);
+    default_header_maps.insert(
+        MapType::HttpRequestTrailers as i32,
+        http_on_request_trailers,
+    );
 
     let mut http_on_response_headers = HashMap::new();
     http_on_response_headers.insert(":method".to_string(), "GET".to_string());
-    http_on_response_headers.insert(":path".to_string(), "/default/response/headers/path".to_string());
+    http_on_response_headers.insert(
+        ":path".to_string(),
+        "/default/response/headers/path".to_string(),
+    );
     http_on_response_headers.insert(":authority".to_string(), "abi_test_harness".to_string());
-    default_header_maps.insert(MapType::HttpResponseHeaders as i32, http_on_response_headers);
-    
+    default_header_maps.insert(
+        MapType::HttpResponseHeaders as i32,
+        http_on_response_headers,
+    );
+
     let mut http_on_response_trailers = HashMap::new();
     http_on_response_trailers.insert(":method".to_string(), "GET".to_string());
-    http_on_response_trailers.insert(":path".to_string(), "/default/response/trailers/path".to_string());
+    http_on_response_trailers.insert(
+        ":path".to_string(),
+        "/default/response/trailers/path".to_string(),
+    );
     http_on_response_trailers.insert(":authority".to_string(), "abi_test_harness".to_string());
-    default_header_maps.insert(MapType::HttpResponseTrailers as i32, http_on_response_trailers);
-    
+    default_header_maps.insert(
+        MapType::HttpResponseTrailers as i32,
+        http_on_response_trailers,
+    );
+
     let mut http_call_response_headers = HashMap::new();
     http_call_response_headers.insert(":method".to_string(), "GET".to_string());
-    http_call_response_headers.insert(":path".to_string(), "/default/call/response/headers/path".to_string());
+    http_call_response_headers.insert(
+        ":path".to_string(),
+        "/default/call/response/headers/path".to_string(),
+    );
     http_call_response_headers.insert(":authority".to_string(), "abi_test_harness".to_string());
-    default_header_maps.insert(MapType::HttpCallResponseHeaders as i32, http_call_response_headers);
-    
+    default_header_maps.insert(
+        MapType::HttpCallResponseHeaders as i32,
+        http_call_response_headers,
+    );
+
     let mut http_call_response_trailers = HashMap::new();
     http_call_response_trailers.insert(":method".to_string(), "GET".to_string());
-    http_call_response_trailers.insert(":path".to_string(), "/default/call/response/trailers/path".to_string());
+    http_call_response_trailers.insert(
+        ":path".to_string(),
+        "/default/call/response/trailers/path".to_string(),
+    );
     http_call_response_trailers.insert(":authority".to_string(), "abi_test_harness".to_string());
-    default_header_maps.insert(MapType::HttpCallResponseTrailers as i32, http_call_response_trailers);
+    default_header_maps.insert(
+        MapType::HttpCallResponseTrailers as i32,
+        http_call_response_trailers,
+    );
 
     default_header_maps
 }
 
-
 pub fn default_buffer_bytes() -> HashMap<i32, Bytes> {
     let mut default_bytes = HashMap::new();
-    default_bytes.insert(BufferType::HttpRequestBody as i32, 
-        "default_http_request_body".as_bytes().to_vec());
-    default_bytes.insert(BufferType::HttpResponseBody as i32, 
-        "default_http_response_body".as_bytes().to_vec());
-    default_bytes.insert(BufferType::DownstreamData as i32,
-        "default_downstream_data".as_bytes().to_vec());
-    default_bytes.insert(BufferType::UpstreamData as i32,
-        "default_upstream_data".as_bytes().to_vec());
-    default_bytes.insert(BufferType::HttpCallResponseBody as i32,
-        "default_call_response_body".as_bytes().to_vec()); 
+    default_bytes.insert(
+        BufferType::HttpRequestBody as i32,
+        "default_http_request_body".as_bytes().to_vec(),
+    );
+    default_bytes.insert(
+        BufferType::HttpResponseBody as i32,
+        "default_http_response_body".as_bytes().to_vec(),
+    );
+    default_bytes.insert(
+        BufferType::DownstreamData as i32,
+        "default_downstream_data".as_bytes().to_vec(),
+    );
+    default_bytes.insert(
+        BufferType::UpstreamData as i32,
+        "default_upstream_data".as_bytes().to_vec(),
+    );
+    default_bytes.insert(
+        BufferType::HttpCallResponseBody as i32,
+        "default_call_response_body".as_bytes().to_vec(),
+    );
     default_bytes
 }
