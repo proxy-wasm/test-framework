@@ -146,7 +146,6 @@ impl Tester {
             .set_expect_replace_header_map_value(map_type as i32, header_map_key, header_map_value);
         self
     }
-    
 
     pub fn expect_remove_header_map_value(
         &mut self,
