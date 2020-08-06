@@ -21,27 +21,29 @@ fn main() -> Result<()> {
 
     let mut hello_world_test = tester::test(hello_world)?;
 
-    hello_world_test.call_start().execute_and_expect(None)?;
+    hello_world_test
+        .call_start()
+        .execute_and_expect(ReturnType::None)?;
 
     hello_world_test
         .call_proxy_on_context_create(1, 0)
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     hello_world_test
         .call_proxy_on_vm_start(1, 0)
         .expect_log(LogLevel::Info, "Hello, World!")
         .expect_set_tick_period_millis(5 * 10u64.pow(3))
-        .execute_and_expect(Some(1))?;
+        .execute_and_expect(ReturnType::Bool(true))?;
 
     hello_world_test
         .call_proxy_on_tick(1)
         .expect_get_current_time_nanos()
         .returning(0 * 10u64.pow(9))
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     hello_world_test
         .call_proxy_on_tick(1)
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     return Ok(());
 }

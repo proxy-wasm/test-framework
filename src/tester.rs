@@ -41,7 +41,7 @@ pub fn test(wasm_file: &str) -> Result<Tester> {
 
 #[derive(Debug)]
 enum FunctionCall {
-    Empty(),
+    Empty,
     Start(),
     ProxyOnContextCreate(i32, i32),
     ProxyOnLog(i32),
@@ -65,7 +65,7 @@ enum FunctionCall {
     ProxyOnHttpCallResponse(i32, i32, i32, i32, i32),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum FunctionType {
     ReturnEmpty,
     ReturnBool,
@@ -73,11 +73,11 @@ enum FunctionType {
 }
 
 pub struct Tester {
-    function_type: FunctionType,
-    function_call: FunctionCall,
     instance: Instance,
     defaults: Arc<Mutex<HostHandle>>,
     expect: Arc<Mutex<ExpectHandle>>,
+    function_call: FunctionCall,
+    function_type: FunctionType,
 }
 
 impl Tester {
@@ -87,11 +87,11 @@ impl Tester {
         expect: Arc<Mutex<ExpectHandle>>,
     ) -> Tester {
         Tester {
-            function_type: FunctionType::ReturnEmpty,
-            function_call: FunctionCall::Empty(),
             instance: instance,
             defaults: host_settings,
             expect: expect,
+            function_call: FunctionCall::Empty,
+            function_type: FunctionType::ReturnEmpty,
         }
     }
 
@@ -258,15 +258,7 @@ impl Tester {
 
     /* ------------------------------------- Wasm Function Executation ------------------------------------- */
 
-    // pub fn execute(&mut self) -> Box<dyn WasmExpect> {
-    //     match self.function_type {
-    //         FunctionType::ReturnEmpty => {return ExpectNone::new(self);},
-    //         FunctionType::ReturnBool => {return ExpectBool::new(self);},
-    //         FunctionType::ReturnAction => {return ExpectAction::new(self);},
-    //     }
-    // }
-
-    pub fn execute_and_expect(&mut self, expect_wasm: Option<i32>) -> Result<()> {
+    pub fn execute_and_expect(&mut self, expect_wasm: ReturnType) -> Result<()> {
         let mut return_wasm: Option<i32> = None;
         match self.function_call {
             FunctionCall::Start() => {
@@ -539,19 +531,18 @@ impl Tester {
             _ => panic!("No function with name: {:?}", self.function_call),
         }
 
-        if (expect_wasm == None && return_wasm != None)
-            || (expect_wasm != None && return_wasm == None)
-        {
-            panic!(
-                "Error calling {:?}: Expected return type does not match actual return type",
-                self.function_call
-            );
-        } else if expect_wasm != None && return_wasm != None {
-            if expect_wasm.unwrap() != return_wasm.unwrap() {
-                panic!(
-                    "Error calling {:?}: Expected return did not match actual return",
-                    self.function_call
-                );
+        match expect_wasm {
+            ReturnType::None => {
+                assert_eq!(self.function_type, FunctionType::ReturnEmpty);
+                assert_eq!(return_wasm.is_none(), true);
+            }
+            ReturnType::Bool(expect_bool) => {
+                assert_eq!(self.function_type, FunctionType::ReturnBool);
+                assert_eq!(expect_bool as i32, return_wasm.unwrap_or(-1));
+            }
+            ReturnType::Action(expect_action) => {
+                assert_eq!(self.function_type, FunctionType::ReturnAction);
+                assert_eq!(expect_action as i32, return_wasm.unwrap_or(-1))
             }
         }
 
@@ -566,6 +557,7 @@ impl Tester {
     pub fn call_start(&mut self) -> &mut Self {
         println!("CALL TO:   _start");
         self.function_call = FunctionCall::Start();
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
@@ -580,6 +572,7 @@ impl Tester {
             root_context_id, parent_context_id
         );
         self.function_call = FunctionCall::ProxyOnContextCreate(root_context_id, parent_context_id);
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
@@ -587,6 +580,7 @@ impl Tester {
         println!("CALL TO:   proxy_on_done");
         println!("ARGS:      context_id -> {}", context_id);
         self.function_call = FunctionCall::ProxyOnDone(context_id);
+        self.function_type = FunctionType::ReturnBool;
         self
     }
 
@@ -594,6 +588,7 @@ impl Tester {
         println!("CALL TO:   proxy_on_log");
         println!("ARGS:      context_id -> {}", context_id);
         self.function_call = FunctionCall::ProxyOnLog(context_id);
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
@@ -601,6 +596,7 @@ impl Tester {
         println!("CALL TO:   proxy_on_delete");
         println!("ARGS:      context_id -> {}", context_id);
         self.function_call = FunctionCall::ProxyOnDelete(context_id);
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
@@ -615,6 +611,7 @@ impl Tester {
             context_id, vm_configuration_size
         );
         self.function_call = FunctionCall::ProxyOnVmStart(context_id, vm_configuration_size);
+        self.function_type = FunctionType::ReturnBool;
         self
     }
 
@@ -629,6 +626,7 @@ impl Tester {
             context_id, plugin_configuration_size
         );
         self.function_call = FunctionCall::ProxyOnConfigure(context_id, plugin_configuration_size);
+        self.function_type = FunctionType::ReturnBool;
         self
     }
 
@@ -636,6 +634,7 @@ impl Tester {
         println!("CALL TO:   proxy_on_tick");
         println!("ARGS:      context_id -> {}", context_id);
         self.function_call = FunctionCall::ProxyOnTick(context_id);
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
@@ -646,6 +645,7 @@ impl Tester {
             context_id, queue_id
         );
         self.function_call = FunctionCall::ProxyOnQueueReady(context_id, queue_id);
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
@@ -653,6 +653,7 @@ impl Tester {
         println!("CALL TO:   proxy_on_new_connection");
         println!("ARGS:      context_id -> {}", context_id);
         self.function_call = FunctionCall::ProxyOnNewConnection(context_id);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -669,6 +670,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnDownstreamData(context_id, data_size, end_of_stream);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -684,6 +686,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnDownstreamConnectionClose(context_id, peer_type as i32);
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
@@ -700,6 +703,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnUpstreamData(context_id, data_size, end_of_stream);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -715,6 +719,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnUpstreamConnectionClose(context_id, peer_type as i32);
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
@@ -729,6 +734,7 @@ impl Tester {
             context_id, num_headers
         );
         self.function_call = FunctionCall::ProxyOnRequestHeaders(context_id, num_headers);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -744,6 +750,7 @@ impl Tester {
             context_id, body_size, end_of_stream
         );
         self.function_call = FunctionCall::ProxyOnRequestBody(context_id, body_size, end_of_stream);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -758,6 +765,7 @@ impl Tester {
             context_id, num_trailers
         );
         self.function_call = FunctionCall::ProxyOnRequestTrailers(context_id, num_trailers);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -772,6 +780,7 @@ impl Tester {
             context_id, num_headers
         );
         self.function_call = FunctionCall::ProxyOnResponseHeaders(context_id, num_headers);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -788,6 +797,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnResponseBody(context_id, body_size, end_of_stream);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -802,6 +812,7 @@ impl Tester {
             context_id, num_trailers
         );
         self.function_call = FunctionCall::ProxyOnResponseTrailers(context_id, num_trailers);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -829,87 +840,9 @@ impl Tester {
             body_size,
             num_trailers,
         );
+        self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
     /* ---------------------------------- Combination Calls ---------------------------------- */
-
-    pub fn quick_http_request(
-        &mut self,
-        context_id: i32,
-        num_request_headers: i32,
-        num_response_headers: i32,
-    ) {
-        println!("CALL TO:   quick_http_request");
-        println!(
-            "ARGS:      context_id -> {}, num_request_headers -> {}, num_response_headers -> {}",
-            context_id, num_request_headers, num_response_headers
-        );
-        self.function_call = FunctionCall::ProxyOnRequestHeaders(context_id, num_request_headers);
-        let _ = self.execute_and_expect(Some(0));
-        self.function_call = FunctionCall::ProxyOnResponseHeaders(context_id, num_response_headers);
-        let _ = self.execute_and_expect(Some(0));
-        self.function_call = FunctionCall::ProxyOnLog(context_id);
-        let _ = self.execute_and_expect(None);
-    }
 }
-
-// pub trait WasmExpect<'a> {
-//     type ReturnType;
-//     fn new(tester: &'a mut Tester) -> Self;
-//     fn expect(&mut self, return_type: Self::ReturnType);
-// }
-
-// pub struct ExpectNone<'a> {
-//     tester: &'a mut Tester
-// }
-
-// impl<'a> WasmExpect<'a> for ExpectNone<'a> {
-//     type ReturnType = Option<()>;
-
-//     fn new(tester: &'a mut Tester) -> ExpectNone<'a> {
-//         ExpectNone {
-//             tester: tester
-//         }
-//     }
-
-//     fn expect(&mut self, return_type: Self::ReturnType) {
-
-//     }
-// }
-
-// pub struct ExpectBool<'a> {
-//     tester: &'a mut Tester
-// }
-
-// impl<'a> WasmExpect<'a> for ExpectBool<'a> {
-//     type ReturnType = bool;
-
-//     fn new(tester: &'a mut Tester) -> ExpectBool<'a> {
-//         ExpectBool {
-//             tester: tester
-//         }
-//     }
-
-//     fn expect(&mut self, return_type: Self::ReturnType) {
-
-//     }
-// }
-
-// pub struct ExpectAction<'a> {
-//     tester: &'a mut Tester
-// }
-
-// impl<'a> WasmExpect<'a> for ExpectAction<'a> {
-//     type ReturnType = Action;
-
-//     fn new(tester: &'a mut Tester) -> ExpectAction<'a> {
-//         ExpectAction {
-//             tester: tester
-//         }
-//     }
-
-//     fn expect(&mut self, return_type: Self::ReturnType) {
-
-//     }
-// }

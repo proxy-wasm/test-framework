@@ -21,15 +21,17 @@ fn main() -> Result<()> {
 
     let mut http_headers_test = tester::test(http_headers)?;
 
-    http_headers_test.call_start().execute_and_expect(None)?;
+    http_headers_test
+        .call_start()
+        .execute_and_expect(ReturnType::None)?;
 
     http_headers_test
         .call_proxy_on_context_create(1, 0)
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     http_headers_test
         .call_proxy_on_context_create(2, 1)
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     let header_map_pairs = vec![
         (":method", "GET"),
@@ -49,7 +51,7 @@ fn main() -> Result<()> {
             send_local_response_headers,
             -1,
         )
-        .execute_and_expect(Some(1))?;
+        .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
     let header_map_pairs = vec![
         (":method", "GET"),
@@ -63,12 +65,12 @@ fn main() -> Result<()> {
         .expect_log(LogLevel::Trace, "#2 <- :method: GET")
         .expect_log(LogLevel::Trace, "#2 <- :path: /goodbye")
         .expect_log(LogLevel::Trace, "#2 <- :authority: developer")
-        .execute_and_expect(Some(0))?;
+        .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
     http_headers_test
         .call_proxy_on_log(2)
         .expect_log(LogLevel::Trace, "#2 completed.")
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     return Ok(());
 }

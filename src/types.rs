@@ -24,7 +24,7 @@ pub enum LogLevel {
 }
 
 #[repr(u32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Action {
     Continue = 0,
     Pause = 1,
@@ -68,6 +68,13 @@ pub enum PeerType {
     Unknown = 0,
     Local = 1,
     Remote = 2,
+}
+
+#[derive(Debug)]
+pub enum ReturnType {
+    None,
+    Bool(bool),
+    Action(Action),
 }
 
 pub type Bytes = Vec<u8>;

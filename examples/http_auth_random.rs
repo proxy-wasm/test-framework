@@ -20,15 +20,17 @@ fn main() -> Result<()> {
                             /wasm32-unknown-unknown/release/examples/http_auth_random.wasm";
     let mut http_auth_random = tester::test(http_auth_random)?;
 
-    http_auth_random.call_start().execute_and_expect(None)?;
+    http_auth_random
+        .call_start()
+        .execute_and_expect(ReturnType::None)?;
 
     http_auth_random
         .call_proxy_on_context_create(1, 0)
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     http_auth_random
         .call_proxy_on_context_create(2, 1)
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     let http_call_headers = vec![
         (":method", "GET"),
@@ -39,7 +41,7 @@ fn main() -> Result<()> {
         .call_proxy_on_request_headers(2, 0)
         .expect_http_call("httpbin", http_call_headers, None, vec![], 5 * 10u64.pow(3))
         .returning(0)
-        .execute_and_expect(Some(1))?;
+        .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
     let buffer_data = "custom_developer_body";
     let buffer_size = buffer_data.len() as i32;
@@ -53,12 +55,12 @@ fn main() -> Result<()> {
             vec![("Powered-By", "proxy-wasm")],
             -1,
         )
-        .execute_and_expect(None)?;
+        .execute_and_expect(ReturnType::None)?;
 
     http_auth_random
         .call_proxy_on_response_headers(2, 0)
         .expect_replace_header_map_value(MapType::HttpResponseHeaders, "Powered-By", "proxy-wasm")
-        .execute_and_expect(Some(0))?;
+        .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
     return Ok(());
 }
