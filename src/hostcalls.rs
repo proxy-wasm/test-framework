@@ -252,6 +252,52 @@ fn get_hostfunc(store: &Store, import: &ImportType) -> Option<Func> {
             ))
         }
 
+        "proxy_set_buffer_bytes" => {
+            Some(Func::wrap(
+                &store,
+                |caller: Caller<'_>,
+                 buffer_type: i32,
+                 start: i32,
+                 size: i32,
+                 buffer_data: i32,
+                 buffer_size: i32|
+                 -> i32 {
+                    // Default Function: set received buffer data as default
+                    // Expectation: assert that the received buffer bytes is as expected
+                    let mem = match caller.get_export("memory") {
+                        Some(Extern::Memory(mem)) => mem,
+                        _ => {
+                            println!(
+                                "=>   Error: proxy_set_buffer_bytes cannot get export \"memory\""
+                            );
+                            return Status::InternalFailure as i32;
+                        }
+                    };
+
+                    unsafe {
+                        let buffer_data_ptr = mem.data_unchecked().get_unchecked(
+                            buffer_data as u32 as usize
+                                ..(buffer_data + buffer_size) as u32 as usize,
+                        );
+                        assert_ge!(buffer_data_ptr.len(), (start + size) as usize);
+
+                        EXPECT.lock().unwrap().staged.get_expect_set_buffer_bytes(
+                            buffer_type,
+                            &buffer_data_ptr[start as usize..(start + size) as usize],
+                        );
+                        HOST.lock().unwrap().staged.set_buffer_bytes(
+                            buffer_type,
+                            std::str::from_utf8(
+                                &buffer_data_ptr[start as usize..(start + size) as usize],
+                            )
+                            .unwrap(),
+                        );
+                    }
+                    return Status::Ok as i32;
+                },
+            ))
+        }
+
         "proxy_get_header_map_pairs" => {
             Some(Func::wrap(
                 &store,

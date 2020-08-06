@@ -39,9 +39,9 @@ pub fn test(wasm_file: &str) -> Result<Tester> {
     return Ok(tester);
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum FunctionCall {
-    Empty,
+    FunctionNotSet,
     Start(),
     ProxyOnContextCreate(i32, i32),
     ProxyOnLog(i32),
@@ -67,6 +67,7 @@ enum FunctionCall {
 
 #[derive(Debug, PartialEq)]
 enum FunctionType {
+    ReturnNotSet,
     ReturnEmpty,
     ReturnBool,
     ReturnAction,
@@ -90,8 +91,8 @@ impl Tester {
             instance: instance,
             defaults: host_settings,
             expect: expect,
-            function_call: FunctionCall::Empty,
-            function_type: FunctionType::ReturnEmpty,
+            function_call: FunctionCall::FunctionNotSet,
+            function_type: FunctionType::ReturnNotSet,
         }
     }
 
@@ -117,6 +118,17 @@ impl Tester {
 
     pub fn expect_get_buffer_bytes(&mut self, buffer_type: BufferType) -> ExpectGetBufferBytes {
         ExpectGetBufferBytes::expecting(self, buffer_type as i32)
+    }
+
+    pub fn expect_set_buffer_bytes(
+        &mut self,
+        buffer_type: BufferType,
+        buffer_data: &str,
+    ) -> &mut Self {
+        self.get_expect_handle()
+            .staged
+            .set_expect_set_buffer_bytes(buffer_type as i32, buffer_data);
+        self
     }
 
     pub fn expect_get_header_map_pairs(&mut self, map_type: MapType) -> ExpectGetHeaderMapPairs {
@@ -259,6 +271,9 @@ impl Tester {
     /* ------------------------------------- Wasm Function Executation ------------------------------------- */
 
     pub fn execute_and_expect(&mut self, expect_wasm: ReturnType) -> Result<()> {
+        assert_ne!(self.function_call, FunctionCall::FunctionNotSet);
+        assert_ne!(self.function_type, FunctionType::ReturnNotSet);
+
         let mut return_wasm: Option<i32> = None;
         match self.function_call {
             FunctionCall::Start() => {
@@ -546,6 +561,8 @@ impl Tester {
             }
         }
 
+        self.function_call = FunctionCall::FunctionNotSet;
+        self.function_type = FunctionType::ReturnNotSet;
         self.assert_expect_stage();
         self.update_expect_stage();
         println!("\n");

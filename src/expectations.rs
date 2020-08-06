@@ -55,6 +55,7 @@ pub struct Expect {
     tick_period_millis: Vec<Duration>,
     current_time_nanos: Vec<SystemTime>,
     get_buffer_bytes: Vec<(i32, Bytes)>,
+    set_buffer_bytes: Vec<(i32, Bytes)>,
     get_header_map_pairs: Vec<(i32, Bytes)>,
     set_header_map_pairs: Vec<(i32, Bytes)>,
     get_header_map_value: Vec<(i32, String, String)>,
@@ -74,6 +75,7 @@ impl Expect {
             tick_period_millis: vec![],
             current_time_nanos: vec![],
             get_buffer_bytes: vec![],
+            set_buffer_bytes: vec![],
             get_header_map_pairs: vec![],
             set_header_map_pairs: vec![],
             get_header_map_value: vec![],
@@ -152,6 +154,24 @@ impl Expect {
                 self.expect_count -= 1;
                 assert_eq!(buffer_type, self.get_buffer_bytes[0].0);
                 Some(self.get_buffer_bytes.remove(0).1)
+            }
+        }
+    }
+
+    pub fn set_expect_set_buffer_bytes(&mut self, buffer_type: i32, buffer_data: &str) {
+        self.expect_count += 1;
+        self.set_buffer_bytes
+            .push((buffer_type, buffer_data.as_bytes().to_vec()));
+    }
+
+    pub fn get_expect_set_buffer_bytes(&mut self, buffer_type: i32, buffer_data: &[u8]) {
+        match self.set_buffer_bytes.len() {
+            0 => {}
+            _ => {
+                self.expect_count -= 1;
+                let expect_buffer = self.set_buffer_bytes.remove(0);
+                assert_eq!(buffer_type, expect_buffer.0);
+                assert_eq!(buffer_data, &expect_buffer.1[..])
             }
         }
     }
