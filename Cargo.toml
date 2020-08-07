@@ -13,6 +13,3 @@ lazy_static = "1.4.0"
 chrono = "0.4"
 more-asserts = "0.2.1"
 rand = "0.7.3"
-
-[patch.crates-io]
-wasmtime = {path = '/usr/local/google/home/chrisagia/.cargo/registry/src/github.com-1ecc6299db9ec823/wasmtime-0.18.0' }
