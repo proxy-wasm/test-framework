@@ -15,7 +15,7 @@
 use crate::expect_interface::*;
 use crate::expectations::ExpectHandle;
 use crate::host_settings::HostHandle;
-use crate::hostcalls::generate_import_list;
+use crate::hostcalls::{generate_import_list, get_abi_version};
 use crate::settings_interface::*;
 use crate::types::*;
 
@@ -29,6 +29,7 @@ pub fn test(wasm_file: &str) -> Result<Tester> {
     let module = Module::from_file(store.engine(), wasm_file)?;
 
     // generate and link host function implementations
+    let abi_version = get_abi_version(&module);
     let imports: Arc<Mutex<Vec<Extern>>> = Arc::new(Mutex::new(Vec::new()));
     let (host_settings, expectations): (Arc<Mutex<HostHandle>>, Arc<Mutex<ExpectHandle>>) =
         generate_import_list(&store, &module, imports.clone());

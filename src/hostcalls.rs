@@ -27,7 +27,7 @@ lazy_static! {
     static ref EXPECT: Arc<Mutex<ExpectHandle>> = Arc::new(Mutex::new(ExpectHandle::new()));
 }
 
-fn get_abi_version(module: &Module) -> &str {
+pub fn get_abi_version(module: &Module) -> &'static str {
     if module.get_export("proxy_abi_version_0_1_0") != None {
         "proxy_abi_version_0_1_0"
     } else if module.get_export("proxy_abi_version_0_2_0") != None {
@@ -43,6 +43,7 @@ pub fn generate_import_list(
     func_vec: Arc<Mutex<Vec<Extern>>>,
 ) -> (Arc<Mutex<HostHandle>>, Arc<Mutex<ExpectHandle>>) {
     let abi_version: &str = get_abi_version(module);
+    HOST.lock().unwrap().staged.set_abi_version(abi_version);
     let imports = module.imports();
     for import in imports {
         match get_hostfunc(&store, abi_version, &import) {
@@ -766,6 +767,24 @@ fn get_hostfunc(store: &Store, _abi_version: &str, import: &ImportType) -> Optio
                     return Status::InternalFailure as i32;
                 },
             ))
+        }
+
+        "proxy_continue_stream" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!("=>   proxy_continue_stream | continuing stream");
+                return Status::Ok as i32;
+            }))
+        }
+
+        "proxy_close_stream" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!("=>   proxy_close_stream | closing stream");
+                return Status::Ok as i32;
+            }))
         }
 
         "proxy_continue_request" => {
