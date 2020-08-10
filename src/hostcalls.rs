@@ -16,17 +16,25 @@ use crate::expectations::ExpectHandle;
 use crate::host_settings::HostHandle;
 use crate::types::*;
 
+use lazy_static::lazy_static;
 use more_asserts::*;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use wasmtime::*;
-// use std::time::{Duration, SystemTime, UNIX_EPOCH};
-// use chrono::{DateTime, Utc};
-use lazy_static::lazy_static;
 
 lazy_static! {
     static ref HOST: Arc<Mutex<HostHandle>> = Arc::new(Mutex::new(HostHandle::new()));
     static ref EXPECT: Arc<Mutex<ExpectHandle>> = Arc::new(Mutex::new(ExpectHandle::new()));
+}
+
+fn get_abi_version(module: &Module) -> &str {
+    if module.get_export("proxy_abi_version_0_1_0") != None {
+        "proxy_abi_version_0_1_0"
+    } else if module.get_export("proxy_abi_version_0_2_0") != None {
+        "proxy_abi_version_0_2_0"
+    } else {
+        panic!("test-framework does not support proxy-wasm modules of this abi version");
+    }
 }
 
 pub fn generate_import_list(
@@ -34,17 +42,18 @@ pub fn generate_import_list(
     module: &Module,
     func_vec: Arc<Mutex<Vec<Extern>>>,
 ) -> (Arc<Mutex<HostHandle>>, Arc<Mutex<ExpectHandle>>) {
+    let abi_version: &str = get_abi_version(module);
     let imports = module.imports();
     for import in imports {
-        match get_hostfunc(&store, &import) {
+        match get_hostfunc(&store, abi_version, &import) {
             Some(func) => (*func_vec).lock().unwrap().push(func.into()),
             None => panic!("Failed to acquire \"{}\" from get_hostfunc() in src/hostcalls.rs --> check configuration", import.name())
         }
     }
-    return (HOST.clone(), EXPECT.clone());
+    (HOST.clone(), EXPECT.clone())
 }
 
-fn get_hostfunc(store: &Store, import: &ImportType) -> Option<Func> {
+fn get_hostfunc(store: &Store, _abi_version: &str, import: &ImportType) -> Option<Func> {
     match import.name() {
         "proxy_log" => {
             Some(Func::wrap(

@@ -42,6 +42,7 @@ impl HostHandle {
 // Global struct for host environment default settings
 #[derive(Debug)]
 pub struct HostSettings {
+    abi_version: String,
     tick_period_millis: Duration,
     header_map_pairs: HashMap<i32, HashMap<String, String>>,
     buffer_bytes: HashMap<i32, Bytes>,
@@ -50,6 +51,7 @@ pub struct HostSettings {
 impl HostSettings {
     pub fn new() -> HostSettings {
         HostSettings {
+            abi_version: String::from("None"),
             tick_period_millis: Duration::new(0, 0),
             header_map_pairs: default_header_map_pairs(),
             buffer_bytes: default_buffer_bytes(),
