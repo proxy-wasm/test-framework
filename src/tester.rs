@@ -36,7 +36,7 @@ pub fn test(wasm_file: &str) -> Result<Tester> {
     let instance = Instance::new(&store, &module, &(*imports).lock().unwrap()[..])?;
 
     // create mock test proxy-wasm object
-    let tester = Tester::new(instance, host_settings, expectations);
+    let tester = Tester::new(abi_version, instance, host_settings, expectations);
     return Ok(tester);
 }
 
@@ -75,6 +75,7 @@ enum FunctionType {
 }
 
 pub struct Tester {
+    abi_version: &'static str,
     instance: Instance,
     defaults: Arc<Mutex<HostHandle>>,
     expect: Arc<Mutex<ExpectHandle>>,
@@ -84,11 +85,13 @@ pub struct Tester {
 
 impl Tester {
     fn new(
+        abi_version: &'static str,
         instance: Instance,
         host_settings: Arc<Mutex<HostHandle>>,
         expect: Arc<Mutex<ExpectHandle>>,
     ) -> Tester {
         Tester {
+            abi_version: abi_version,
             instance: instance,
             defaults: host_settings,
             expect: expect,
@@ -266,7 +269,7 @@ impl Tester {
     }
 
     pub fn reset_host_settings(&mut self) {
-        self.defaults.lock().unwrap().reset();
+        self.defaults.lock().unwrap().reset(self.abi_version);
     }
 
     /* ------------------------------------- Wasm Function Executation ------------------------------------- */

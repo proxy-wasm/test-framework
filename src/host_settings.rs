@@ -26,12 +26,12 @@ pub struct HostHandle {
 impl HostHandle {
     pub fn new() -> HostHandle {
         HostHandle {
-            staged: HostSettings::new(),
+            staged: HostSettings::new("None"),
         }
     }
 
-    pub fn reset(&mut self) {
-        self.staged = HostSettings::new();
+    pub fn reset(&mut self, abi_version: &'static str) {
+        self.staged = HostSettings::new(abi_version);
     }
 
     pub fn print_staged(&self) {
@@ -49,9 +49,9 @@ pub struct HostSettings {
 }
 
 impl HostSettings {
-    pub fn new() -> HostSettings {
+    pub fn new(abi_version: &'static str) -> HostSettings {
         HostSettings {
-            abi_version: "None",
+            abi_version: abi_version,
             tick_period_millis: Duration::new(0, 0),
             header_map_pairs: default_header_map_pairs(),
             buffer_bytes: default_buffer_bytes(),
