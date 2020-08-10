@@ -13,13 +13,14 @@
 // limitations under the License.
 
 use anyhow::Result;
-use proxy_wasm_abi_test_harness::{tester, types::*};
+use proxy_wasm_test_framework::{tester, types::*};
+use std::env;
 
 fn main() -> Result<()> {
-    let hello_world = "/usr/local/google/home/chrisagia/ws/proxy-wasm-rust-sdk/target\
-                       /wasm32-unknown-unknown/release/examples/hello_world.wasm";
-
-    let mut hello_world_test = tester::test(hello_world)?;
+    let args: Vec<String> = env::args().collect();
+    assert_eq!(args.len(), 2);
+    let hello_world_path = &args[1];
+    let mut hello_world_test = tester::test(hello_world_path)?;
 
     hello_world_test
         .call_start()

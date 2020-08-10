@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #![crate_type = "lib"]
-#![crate_name = "proxy_wasm_abi_test_harness"]
+#![crate_name = "proxy_wasm_test_framework"]
 
 pub mod tester;
 pub mod types;

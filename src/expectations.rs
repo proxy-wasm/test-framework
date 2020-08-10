@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::hostcalls::serial_utils::{deserialize_map, serialize_map, serialize_property_path};
+use crate::hostcalls::serial_utils::serialize_map;
 use crate::types::*;
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};

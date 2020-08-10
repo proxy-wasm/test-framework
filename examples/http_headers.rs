@@ -13,13 +13,14 @@
 // limitations under the License.
 
 use anyhow::Result;
-use proxy_wasm_abi_test_harness::{tester, types::*};
+use proxy_wasm_test_framework::{tester, types::*};
+use std::env;
 
 fn main() -> Result<()> {
-    let http_headers = "/usr/local/google/home/chrisagia/ws/proxy-wasm-rust-sdk/target\
-                           /wasm32-unknown-unknown/release/examples/http_headers.wasm";
-
-    let mut http_headers_test = tester::test(http_headers)?;
+    let args: Vec<String> = env::args().collect();
+    assert_eq!(args.len(), 2);
+    let http_headers_path = &args[1];
+    let mut http_headers_test = tester::test(http_headers_path)?;
 
     http_headers_test
         .call_start()

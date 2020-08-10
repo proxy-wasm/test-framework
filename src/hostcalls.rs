@@ -154,7 +154,7 @@ fn get_hostfunc(store: &Store, import: &ImportType) -> Option<Func> {
         "proxy_get_configuration" => {
             Some(Func::wrap(
                 &store,
-                |caller: Caller<'_>, return_buffer_data: i32, return_buffer_size: i32| -> i32 {
+                |_caller: Caller<'_>, _return_buffer_data: i32, _return_buffer_size: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     println!("-     proxy_get_configuration | ");
@@ -973,16 +973,6 @@ fn get_hostfunc(store: &Store, import: &ImportType) -> Option<Func> {
             }))
         }
 
-        // Host function implementation template
-        // "fn_name" => {
-        //     Some(Func::wrap(
-        //         &store, |_caller: Caller<'_>,
-        //                  _args: i32| -> i32 {
-        //             println!("=>   proxy_fn_name | ");
-        //             return Status::InternalFailure as i32;
-        //         }
-        //     ))
-        // },
         _ => None,
     }
 }
@@ -997,7 +987,7 @@ pub mod serial_utils {
                             abcdefghijklmnopqrstuvwxyz\
                             0123456789)(*&^%$#@!~";
 
-    pub fn serialize_property_path(path: Vec<&str>) -> Bytes {
+    pub fn _serialize_property_path(path: Vec<&str>) -> Bytes {
         if path.is_empty() {
             return Vec::new();
         }

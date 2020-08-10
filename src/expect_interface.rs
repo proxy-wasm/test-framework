@@ -18,7 +18,7 @@ use crate::tester::Tester;
 // no structure is provided for them. Setting of these expectations are built directly into tester.rs:
 
 /* proxy_log(), proxy_set_tick_period_millis(), proxy_replace_header_map_value(), proxy_remove_header_map_value()
-   proxy_add_header_map_value(), proxy_send_loca_response(), etc.
+   proxy_add_header_map_value(), proxy_send_local_response(), etc.
 */
 
 pub struct ExpectGetCurrentTimeNanos<'a> {

@@ -1,5 +1,5 @@
 [package]
-name = "proxy-wasm-abi-test-harness"
+name = "proxy-wasm-test-framework"
 version = "0.1.0"
 authors = ["Christopher Agia <chrisagia@google.com>"]
 edition = "2018"

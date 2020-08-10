@@ -13,12 +13,14 @@
 // limitations under the License.
 
 use anyhow::Result;
-use proxy_wasm_abi_test_harness::{tester, types::*};
+use proxy_wasm_test_framework::{tester, types::*};
+use std::env;
 
 fn main() -> Result<()> {
-    let http_auth_random = "/usr/local/google/home/chrisagia/ws/proxy-wasm-rust-sdk/target\
-                            /wasm32-unknown-unknown/release/examples/http_auth_random.wasm";
-    let mut http_auth_random = tester::test(http_auth_random)?;
+    let args: Vec<String> = env::args().collect();
+    assert_eq!(args.len(), 2);
+    let http_auth_random_path = &args[1];
+    let mut http_auth_random = tester::test(http_auth_random_path)?;
 
     http_auth_random
         .call_start()
