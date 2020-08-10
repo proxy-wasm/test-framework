@@ -34,21 +34,25 @@ fn main() -> Result<()> {
         .call_proxy_on_context_create(2, 1)
         .execute_and_expect(ReturnType::None)?;
 
-    let http_call_headers = vec![
-        (":method", "GET"),
-        (":path", "/bytes/1"),
-        (":authority", "httpbin.org"),
-    ];
     http_auth_random
         .call_proxy_on_request_headers(2, 0)
-        .expect_http_call("httpbin", http_call_headers, None, vec![], 5 * 10u64.pow(3))
+        .expect_http_call(
+            "httpbin",
+            vec![
+                (":method", "GET"),
+                (":path", "/bytes/1"),
+                (":authority", "httpbin.org"),
+            ],
+            None,
+            vec![],
+            5 * 10u64.pow(3),
+        )
         .returning(0)
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
     let buffer_data = "custom_developer_body";
-    let buffer_size = buffer_data.len() as i32;
     http_auth_random
-        .call_proxy_on_http_call_response(2, 0, 0, buffer_size, 0)
+        .call_proxy_on_http_call_response(2, 0, 0, buffer_data.len() as i32, 0)
         .expect_get_buffer_bytes(BufferType::HttpCallResponseBody)
         .returning(buffer_data)
         .expect_send_local_response(

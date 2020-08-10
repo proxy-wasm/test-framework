@@ -34,35 +34,32 @@ fn main() -> Result<()> {
         .call_proxy_on_context_create(2, 1)
         .execute_and_expect(ReturnType::None)?;
 
-    let header_map_pairs = vec![
-        (":method", "GET"),
-        (":path", "/hello"),
-        (":authority", "developer"),
-    ];
-    let send_local_response_headers = vec![("Hello", "World"), ("Powered-By", "proxy-wasm")];
     http_headers_test
         .call_proxy_on_request_headers(2, 0)
         .expect_get_header_map_pairs(MapType::HttpRequestHeaders)
-        .returning(header_map_pairs)
+        .returning(vec![
+            (":method", "GET"),
+            (":path", "/hello"),
+            (":authority", "developer"),
+        ])
         .expect_get_header_map_value(MapType::HttpRequestHeaders, ":path")
         .returning("/hello")
         .expect_send_local_response(
             200,
             Some("Hello, World!\n"),
-            send_local_response_headers,
+            vec![("Hello", "World"), ("Powered-By", "proxy-wasm")],
             -1,
         )
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
-    let header_map_pairs = vec![
-        (":method", "GET"),
-        (":path", "/goodbye"),
-        (":authority", "developer"),
-    ];
     http_headers_test
         .call_proxy_on_response_headers(2, 0)
         .expect_get_header_map_pairs(MapType::HttpResponseHeaders)
-        .returning(header_map_pairs)
+        .returning(vec![
+            (":method", "GET"),
+            (":path", "/goodbye"),
+            (":authority", "developer"),
+        ])
         .expect_log(LogLevel::Trace, "#2 <- :method: GET")
         .expect_log(LogLevel::Trace, "#2 <- :path: /goodbye")
         .expect_log(LogLevel::Trace, "#2 <- :authority: developer")
