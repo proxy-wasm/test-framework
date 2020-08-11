@@ -26,16 +26,18 @@ fn main() -> Result<()> {
         .call_start()
         .execute_and_expect(ReturnType::None)?;
 
+    let root_context = 1;
     http_headers_test
-        .call_proxy_on_context_create(1, 0)
+        .call_proxy_on_context_create(root_context, 0)
+        .execute_and_expect(ReturnType::None)?;
+
+    let http_context = 2;
+    http_headers_test
+        .call_proxy_on_context_create(http_context, root_context)
         .execute_and_expect(ReturnType::None)?;
 
     http_headers_test
-        .call_proxy_on_context_create(2, 1)
-        .execute_and_expect(ReturnType::None)?;
-
-    http_headers_test
-        .call_proxy_on_request_headers(2, 0)
+        .call_proxy_on_request_headers(http_context, 0)
         .expect_get_header_map_pairs(MapType::HttpRequestHeaders)
         .returning(vec![
             (":method", "GET"),
@@ -53,7 +55,7 @@ fn main() -> Result<()> {
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
     http_headers_test
-        .call_proxy_on_response_headers(2, 0)
+        .call_proxy_on_response_headers(http_context, 0)
         .expect_get_header_map_pairs(MapType::HttpResponseHeaders)
         .returning(vec![
             (":method", "GET"),
@@ -66,7 +68,7 @@ fn main() -> Result<()> {
         .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
     http_headers_test
-        .call_proxy_on_log(2)
+        .call_proxy_on_log(http_context)
         .expect_log(LogLevel::Trace, "#2 completed.")
         .execute_and_expect(ReturnType::None)?;
 

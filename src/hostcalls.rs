@@ -27,11 +27,11 @@ lazy_static! {
     static ref EXPECT: Arc<Mutex<ExpectHandle>> = Arc::new(Mutex::new(ExpectHandle::new()));
 }
 
-pub fn get_abi_version(module: &Module) -> &'static str {
+pub fn get_abi_version(module: &Module) -> AbiVersion {
     if module.get_export("proxy_abi_version_0_1_0") != None {
-        "proxy_abi_version_0_1_0"
+        AbiVersion::ProxyAbiVersion0_1_0
     } else if module.get_export("proxy_abi_version_0_2_0") != None {
-        "proxy_abi_version_0_2_0"
+        AbiVersion::ProxyAbiVersion0_2_0
     } else {
         panic!("test-framework does not support proxy-wasm modules of this abi version");
     }
@@ -42,7 +42,7 @@ pub fn generate_import_list(
     module: &Module,
     func_vec: Arc<Mutex<Vec<Extern>>>,
 ) -> (Arc<Mutex<HostHandle>>, Arc<Mutex<ExpectHandle>>) {
-    let abi_version: &str = get_abi_version(module);
+    let abi_version = get_abi_version(module);
     HOST.lock().unwrap().staged.set_abi_version(abi_version);
     let imports = module.imports();
     for import in imports {
@@ -54,7 +54,7 @@ pub fn generate_import_list(
     (HOST.clone(), EXPECT.clone())
 }
 
-fn get_hostfunc(store: &Store, _abi_version: &str, import: &ImportType) -> Option<Func> {
+fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) -> Option<Func> {
     match import.name() {
         "proxy_log" => {
             Some(Func::wrap(

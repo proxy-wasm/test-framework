@@ -26,16 +26,18 @@ fn main() -> Result<()> {
         .call_start()
         .execute_and_expect(ReturnType::None)?;
 
+    let root_context = 1;
     http_auth_random
-        .call_proxy_on_context_create(1, 0)
+        .call_proxy_on_context_create(root_context, 0)
+        .execute_and_expect(ReturnType::None)?;
+
+    let http_context = 2;
+    http_auth_random
+        .call_proxy_on_context_create(http_context, root_context)
         .execute_and_expect(ReturnType::None)?;
 
     http_auth_random
-        .call_proxy_on_context_create(2, 1)
-        .execute_and_expect(ReturnType::None)?;
-
-    http_auth_random
-        .call_proxy_on_request_headers(2, 0)
+        .call_proxy_on_request_headers(http_context, 0)
         .expect_http_call(
             "httpbin",
             vec![
@@ -52,7 +54,7 @@ fn main() -> Result<()> {
 
     let buffer_data = "custom_developer_body";
     http_auth_random
-        .call_proxy_on_http_call_response(2, 0, 0, buffer_data.len() as i32, 0)
+        .call_proxy_on_http_call_response(http_context, 0, 0, buffer_data.len() as i32, 0)
         .expect_get_buffer_bytes(BufferType::HttpCallResponseBody)
         .returning(buffer_data)
         .expect_send_local_response(
@@ -64,7 +66,7 @@ fn main() -> Result<()> {
         .execute_and_expect(ReturnType::None)?;
 
     http_auth_random
-        .call_proxy_on_response_headers(2, 0)
+        .call_proxy_on_response_headers(http_context, 0)
         .expect_replace_header_map_value(MapType::HttpResponseHeaders, "Powered-By", "proxy-wasm")
         .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
