@@ -57,14 +57,9 @@ fn main() -> Result<()> {
     http_headers_test
         .call_proxy_on_response_headers(http_context, 0)
         .expect_get_header_map_pairs(MapType::HttpResponseHeaders)
-        .returning(vec![
-            (":method", "GET"),
-            (":path", "/goodbye"),
-            (":authority", "developer"),
-        ])
-        .expect_log(LogLevel::Trace, "#2 <- :method: GET")
-        .expect_log(LogLevel::Trace, "#2 <- :path: /goodbye")
-        .expect_log(LogLevel::Trace, "#2 <- :authority: developer")
+        .returning(vec![(":status", "200"), ("Powered-By", "proxy-wasm")])
+        .expect_log(LogLevel::Trace, "#2 <- :status: 200")
+        .expect_log(LogLevel::Trace, "#2 <- Powered-By: proxy-wasm")
         .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
     http_headers_test
