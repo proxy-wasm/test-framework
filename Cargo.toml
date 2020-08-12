@@ -10,6 +10,5 @@ edition = "2018"
 wasmtime = { git = "https://github.com/bytecodealliance/wasmtime", rev = "2482bd80c24a6b23ac1a259df77c61d5cc9c93a9" }
 anyhow = "1.0.31"
 lazy_static = "1.4.0"
-chrono = "0.4"
 more-asserts = "0.2.1"
 rand = "0.7.3"
