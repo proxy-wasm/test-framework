@@ -1,0 +1,14 @@
+[package]
+name = "proxy-wasm-test-framework"
+version = "0.1.0"
+authors = ["Christopher Agia <chrisagia@google.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wasmtime = { git = "https://github.com/bytecodealliance/wasmtime", rev = "2482bd80c24a6b23ac1a259df77c61d5cc9c93a9" }
+anyhow = "1.0.31"
+lazy_static = "1.4.0"
+more-asserts = "0.2.1"
+rand = "0.7.3"
