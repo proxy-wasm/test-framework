@@ -286,7 +286,7 @@ impl Tester {
                     .instance
                     .get_func("_start")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `_start` function export"
+                        "Error: failed to find `_start` function export"
                     ))?
                     .get0::<()>()?;
                 _start()?;
@@ -297,7 +297,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_context_create")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_context_create` function export"
+                        "Error: failed to find `proxy_on_context_create` function export"
                     ))?
                     .get2::<i32, i32, ()>()?;
                 proxy_on_context_create(root_context_id, parent_context_id)?;
@@ -308,11 +308,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_done")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_done' function export"
+                        "Error: failed to find 'proxy_on_done' function export"
                     ))?
                     .get1::<i32, i32>()?;
                 let is_done = proxy_on_done(context_id)?;
-                println!("RETURN:    is_done -> {}", is_done);
+                println!("[host<-vm] proxy_on_done return: is_done={}", is_done);
                 return_wasm = Some(is_done);
             }
 
@@ -322,11 +322,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_foreign_function")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_foreign_function' function export"
+                        "Error: failed to find 'proxy_on_foreign_function' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
                 let action = proxy_on_foreign_function(root_context_id, function_id, data_size)?;
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_foreign_function return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -335,7 +335,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_log")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_log` function export"
+                        "Error: failed to find `proxy_on_log` function export"
                     ))?
                     .get1::<i32, ()>()?;
                 proxy_on_log(context_id)?;
@@ -346,7 +346,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_delete")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_delete' function export"
+                        "Error: failed to find 'proxy_on_delete' function export"
                     ))?
                     .get1::<i32, ()>()?;
                 proxy_on_delete(context_id)?;
@@ -357,11 +357,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_vm_start")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_vm_start` function export"
+                        "Error: failed to find `proxy_on_vm_start` function export"
                     ))?
                     .get2::<i32, i32, i32>()?;
                 let success = proxy_on_vm_start(context_id, vm_configuration_size)?;
-                println!("RETURN:    success -> {}", success);
+                println!("[host<-vm] proxy_on_vm_start return: success={}", success);
                 return_wasm = Some(success);
             }
 
@@ -370,11 +370,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_configure")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_configure' function export"
+                        "Error: failed to find 'proxy_on_configure' function export"
                     ))?
                     .get2::<i32, i32, i32>()?;
                 let success = proxy_on_configure(context_id, plugin_configuration_size)?;
-                println!("RETURN:    success -> {}", success);
+                println!("[host<-vm] proxy_on_configure return: success={}", success);
                 return_wasm = Some(success);
             }
 
@@ -383,7 +383,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_tick")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_tick` function export"
+                        "Error: failed to find `proxy_on_tick` function export"
                     ))?
                     .get1::<i32, ()>()?;
                 proxy_on_tick(context_id)?;
@@ -394,7 +394,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_queue_ready")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_queue_ready' function export"
+                        "Error: failed to find 'proxy_on_queue_ready' function export"
                     ))?
                     .get2::<i32, i32, ()>()?;
                 proxy_on_queue_ready(context_id, queue_id)?;
@@ -405,11 +405,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_new_connection")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_new_connection' function export"
+                        "Error: failed to find 'proxy_on_new_connection' function export"
                     ))?
                     .get1::<i32, i32>()?;
                 let action = proxy_on_new_connection(context_id)?;
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_new_connection return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -418,11 +418,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_downstream_data")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_downstream_data' function export"
+                        "Error: failed to find 'proxy_on_downstream_data' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
                 let action = proxy_on_downstream_data(context_id, data_size, end_of_stream)?;
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_downstream_data return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -431,7 +431,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_downstream_connection_close")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_downstream_connection_close' function export"
+                        "Error: failed to find 'proxy_on_downstream_connection_close' function export"
                     ))?
                     .get2::<i32, i32, ()>()?;
                 proxy_on_downstream_connection_close(context_id, peer_type)?;
@@ -442,11 +442,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_upstream_data")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_upstream_data' function export"
+                        "Error: failed to find 'proxy_on_upstream_data' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
                 let action = proxy_on_upstream_data(context_id, data_size, end_of_stream)?;
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_upstream_data return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -455,7 +455,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_upstream_connection_close")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_upstream_connection_close' function export"
+                        "Error: failed to find 'proxy_on_upstream_connection_close' function export"
                     ))?
                     .get2::<i32, i32, ()>()?;
                 proxy_on_upstream_connection_close(context_id, peer_type)?;
@@ -466,7 +466,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_request_headers")
                     .ok_or(anyhow::format_err!(
-                    "failed to find `proxy_on_request_headers` function export"
+                    "Error: failed to find `proxy_on_request_headers` function export"
                 ))?;
                 let action = match self.abi_version {
                     AbiVersion::ProxyAbiVersion0_1_0 => {
@@ -477,11 +477,11 @@ impl Tester {
                         context_id, num_headers, end_of_stream
                     )?,
                     _ => panic!(
-                        "proxy_on_request_headers not supported for ABI version: {:?}",
+                        "Error: proxy_on_request_headers not supported for {:?}",
                         self.abi_version
                     ),
                 };
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_request_headers return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -490,11 +490,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_request_body")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_request_body' function export"
+                        "Error: failed to find 'proxy_on_request_body' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
                 let action = proxy_on_request_body(context_id, body_size, end_of_stream)?;
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_request_body return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -503,11 +503,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_request_trailers")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_request_trailers` function export"
+                        "Error: failed to find `proxy_on_request_trailers` function export"
                     ))?
                     .get2::<i32, i32, i32>()?;
                 let action = proxy_on_request_trailers(context_id, num_trailers)?;
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_request_trailers return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -516,7 +516,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_response_headers")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_response_headers` function export"
+                        "Error: failed to find `proxy_on_response_headers` function export"
                     ))?;
                 let action = match self.abi_version {
                     AbiVersion::ProxyAbiVersion0_1_0 => {
@@ -527,11 +527,11 @@ impl Tester {
                         context_id, num_headers, end_of_stream
                     )?,
                     _ => panic!(
-                        "proxy_on_response_headers not supported for ABI version: {:?}",
+                        "Error: proxy_on_response_headers not supported for {:?}",
                         self.abi_version
                     ),
                 };
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_response_headers return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -540,11 +540,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_response_body")
                     .ok_or(anyhow::format_err!(
-                        "failed to find 'proxy_on_response_body' function export"
+                        "Error: failed to find 'proxy_on_response_body' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
                 let action = proxy_on_response_body(context_id, body_size, end_of_stream)?;
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] function return: action -> {}", action);
                 return_wasm = Some(action);
             }
 
@@ -553,11 +553,11 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_response_trailers")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_response_trailers` function export"
+                        "Error: failed to find `proxy_on_response_trailers` function export"
                     ))?
                     .get2::<i32, i32, i32>()?;
                 let action = proxy_on_response_trailers(context_id, num_trailers)?;
-                println!("RETURN:    action -> {}", action);
+                println!("[host<-vm] proxy_on_response_body return: action={}", action);
                 return_wasm = Some(action);
             }
 
@@ -572,7 +572,7 @@ impl Tester {
                     .instance
                     .get_func("proxy_on_http_call_response")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_http_call_response` function export"
+                        "Error: failed to find `proxy_on_http_call_response` function export"
                     ))?
                     .get5::<i32, i32, i32, i32, i32, ()>()?;
                 proxy_on_http_call_response(
@@ -584,7 +584,7 @@ impl Tester {
                 )?;
             }
 
-            _ => panic!("No function with name: {:?}", self.function_call),
+            _ => panic!("Error: no function with name: {:?}", self.function_call),
         }
 
         match expect_wasm {
@@ -613,7 +613,7 @@ impl Tester {
     /* ------------------------------------- Call Setting ------------------------------------- */
 
     pub fn call_start(&mut self) -> &mut Self {
-        println!("CALL TO:   _start");
+        println!("[host->vm] _start()");
         self.function_call = FunctionCall::Start();
         self.function_type = FunctionType::ReturnEmpty;
         self
@@ -624,9 +624,8 @@ impl Tester {
         root_context_id: i32,
         parent_context_id: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_context_create");
         println!(
-            "ARGS:      root_context_id -> {}, parent_context_id -> {}",
+            "[host->vm] proxy_on_context_create(root_context_id={}, parent_context_id={})",
             root_context_id, parent_context_id
         );
         self.function_call = FunctionCall::ProxyOnContextCreate(root_context_id, parent_context_id);
@@ -635,8 +634,7 @@ impl Tester {
     }
 
     pub fn call_proxy_on_done(&mut self, context_id: i32) -> &mut Self {
-        println!("CALL TO:   proxy_on_done");
-        println!("ARGS:      context_id -> {}", context_id);
+        println!("[host->vm] proxy_on_done(context_id={})", context_id);
         self.function_call = FunctionCall::ProxyOnDone(context_id);
         self.function_type = FunctionType::ReturnBool;
         self
@@ -648,11 +646,9 @@ impl Tester {
         function_id: i32,
         data_size: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_foreign_function");
-        println!(
-            "ARGS:      root_context_id -> {}, function_id -> {}, data_size -> {}",
-            root_context_id, function_id, data_size
-        );
+        println!("[host->vm] proxy_on_foreign_function(root_context_id={}, function_id={}, data_size={})", 
+            root_context_id, function_id, data_size);
+
         self.function_call =
             FunctionCall::ProxyOnForeignFunction(root_context_id, function_id, data_size);
         self.function_type = FunctionType::ReturnAction;
@@ -660,16 +656,14 @@ impl Tester {
     }
 
     pub fn call_proxy_on_log(&mut self, context_id: i32) -> &mut Self {
-        println!("CALL TO:   proxy_on_log");
-        println!("ARGS:      context_id -> {}", context_id);
+        println!("[host->vm] proxy_on_log(context_id={})", context_id);
         self.function_call = FunctionCall::ProxyOnLog(context_id);
         self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
     pub fn call_proxy_on_delete(&mut self, context_id: i32) -> &mut Self {
-        println!("CALL TO:   proxy_on_delete");
-        println!("ARGS:      context_id -> {}", context_id);
+        println!("[host->vm] proxy_on_delete(context_id={})", context_id);
         self.function_call = FunctionCall::ProxyOnDelete(context_id);
         self.function_type = FunctionType::ReturnEmpty;
         self
@@ -680,9 +674,8 @@ impl Tester {
         context_id: i32,
         vm_configuration_size: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_vm_start");
         println!(
-            "ARGS:      context_id -> {}, vm_configuration_size -> {}",
+            "[host->vm] proxy_on_vm_start(context_id={}, vm_configuration_size={})",
             context_id, vm_configuration_size
         );
         self.function_call = FunctionCall::ProxyOnVmStart(context_id, vm_configuration_size);
@@ -695,9 +688,8 @@ impl Tester {
         context_id: i32,
         plugin_configuration_size: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_configure");
         println!(
-            "ARGS:      context_id -> {}, plugin_configuration_size -> {}",
+            "[host->vm] proxy_on_configure(context_id={}, plugin_configuration_size={})",
             context_id, plugin_configuration_size
         );
         self.function_call = FunctionCall::ProxyOnConfigure(context_id, plugin_configuration_size);
@@ -706,17 +698,15 @@ impl Tester {
     }
 
     pub fn call_proxy_on_tick(&mut self, context_id: i32) -> &mut Self {
-        println!("CALL TO:   proxy_on_tick");
-        println!("ARGS:      context_id -> {}", context_id);
+        println!("[host->vm] proxy_on_tick(context_id={})", context_id);
         self.function_call = FunctionCall::ProxyOnTick(context_id);
         self.function_type = FunctionType::ReturnEmpty;
         self
     }
 
     pub fn call_proxy_on_queue_ready(&mut self, context_id: i32, queue_id: i32) -> &mut Self {
-        println!("CALL TO:   proxy_on_queue_ready");
         println!(
-            "ARGS:      context_id -> {}, queue_id -> {}",
+            "[host->vm] proxy_on_queue_ready(context_id={}, queue_id={})",
             context_id, queue_id
         );
         self.function_call = FunctionCall::ProxyOnQueueReady(context_id, queue_id);
@@ -725,8 +715,10 @@ impl Tester {
     }
 
     pub fn call_proxy_on_new_connection(&mut self, context_id: i32) -> &mut Self {
-        println!("CALL TO:   proxy_on_new_connection");
-        println!("ARGS:      context_id -> {}", context_id);
+        println!(
+            "[host->vm] proxy_on_new_connection(context_id={})",
+            context_id
+        );
         self.function_call = FunctionCall::ProxyOnNewConnection(context_id);
         self.function_type = FunctionType::ReturnAction;
         self
@@ -738,9 +730,8 @@ impl Tester {
         data_size: i32,
         end_of_stream: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_downstream_data");
         println!(
-            "ARGS:      context_id -> {}, data_size -> {}, end_of_stream -> {}",
+            "[host->vm] proxy_on_downstream_data(context_id={}, data_size={}, end_of_stream={})",
             context_id, data_size, end_of_stream
         );
         self.function_call =
@@ -754,9 +745,8 @@ impl Tester {
         context_id: i32,
         peer_type: PeerType,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_downstream_connection_close");
         println!(
-            "ARGS:      context_id -> {}, peer_data -> {}",
+            "[host->vm] proxy_on_downstream_connection_close(context_id={}, peer_data={})",
             context_id, peer_type as i32
         );
         self.function_call =
@@ -771,9 +761,8 @@ impl Tester {
         data_size: i32,
         end_of_stream: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_upstream_data");
         println!(
-            "ARGS:      context_id -> {}, data_size -> {}, end_of_stream -> {}",
+            "[host->vm] proxy_on_upstream_data(context_id={}, data_size={}, end_of_stream={})",
             context_id, data_size, end_of_stream
         );
         self.function_call =
@@ -787,9 +776,8 @@ impl Tester {
         context_id: i32,
         peer_type: PeerType,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_upstream_connection_close");
         println!(
-            "ARGS:      context_id -> {}, peer_data -> {}",
+            "[host->vm] proxy_on_upstream_connection_close(context_id={}, peer_data={})",
             context_id, peer_type as i32
         );
         self.function_call =
@@ -804,9 +792,8 @@ impl Tester {
         num_headers: i32,
         end_of_stream: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_request_headers");
         println!(
-            "ARGS:      context_id -> {}, num_headers -> {}, end_of_stream -> {}",
+            "[host->vm] proxy_on_request_headers(context_id={}, num_headers={}, end_of_stream={})",
             context_id, num_headers, end_of_stream
         );
         self.function_call =
@@ -821,9 +808,8 @@ impl Tester {
         body_size: i32,
         end_of_stream: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_request_body");
         println!(
-            "ARGS:      context_id -> {}, body_size -> {}, end_of_stream -> {}",
+            "[host->vm] proxy_on_request_body(context_id={}, body_size={}, end_of_stream={})",
             context_id, body_size, end_of_stream
         );
         self.function_call = FunctionCall::ProxyOnRequestBody(context_id, body_size, end_of_stream);
@@ -836,9 +822,8 @@ impl Tester {
         context_id: i32,
         num_trailers: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_request_trailers");
         println!(
-            "ARGS:      context_id -> {}, num_trailers -> {}",
+            "[host->vm] proxy_on_request_trailers(context_id={}, num_trailers={})",
             context_id, num_trailers
         );
         self.function_call = FunctionCall::ProxyOnRequestTrailers(context_id, num_trailers);
@@ -852,9 +837,8 @@ impl Tester {
         num_headers: i32,
         end_of_stream: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_response_headers");
         println!(
-            "ARGS:      context_id -> {}, num_headers -> {}, end_of_stream -> {}",
+            "[host->vm] proxy_on_response_headers(context_id={}, num_headers={}, end_of_stream={})",
             context_id, num_headers, end_of_stream
         );
         self.function_call =
@@ -869,9 +853,8 @@ impl Tester {
         body_size: i32,
         end_of_stream: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_response_body");
         println!(
-            "ARGS:      context_id -> {}, body_size -> {}, end_of_stream -> {}",
+            "[host->vm] proxy_on_response_body(context_id={}, body_size={}, end_of_stream={})",
             context_id, body_size, end_of_stream
         );
         self.function_call =
@@ -885,9 +868,8 @@ impl Tester {
         context_id: i32,
         num_trailers: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_response_trailers");
         println!(
-            "ARGS:      context_id -> {}, num_trailers -> {}",
+            "[host->vm] proxy_on_response_trailers(context_id={}, num_trailers={})",
             context_id, num_trailers
         );
         self.function_call = FunctionCall::ProxyOnResponseTrailers(context_id, num_trailers);
@@ -903,14 +885,13 @@ impl Tester {
         body_size: i32,
         num_trailers: i32,
     ) -> &mut Self {
-        println!("CALL TO:   proxy_on_http_call_response");
         println!(
-            "ARGS:      context_id -> {}, callout_id -> {}",
-            context_id, callout_id
+            "[host->vm] proxy_on_http_call_response(context_id={}, callout_id={}, num_headers={}",
+            context_id, callout_id, num_headers
         );
         println!(
-            "           num_headers -> {}, body_size -> {}, num_trailers: {}",
-            num_headers, body_size, num_trailers
+            "                                       body_size={}, num_trailers={})",
+            body_size, num_trailers
         );
         self.function_call = FunctionCall::ProxyOnHttpCallResponse(
             context_id,

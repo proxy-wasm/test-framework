@@ -33,7 +33,7 @@ pub fn get_abi_version(module: &Module) -> AbiVersion {
     } else if module.get_export("proxy_abi_version_0_2_0") != None {
         AbiVersion::ProxyAbiVersion0_2_0
     } else {
-        panic!("test-framework does not support proxy-wasm modules of this abi version");
+        panic!("Error: test-framework does not support proxy-wasm modules of this abi version");
     }
 }
 
@@ -48,7 +48,7 @@ pub fn generate_import_list(
     for import in imports {
         match get_hostfunc(&store, abi_version, &import) {
             Some(func) => (*func_vec).lock().unwrap().push(func.into()),
-            None => panic!("Failed to acquire \"{}\" from get_hostfunc() in src/hostcalls.rs --> check configuration", import.name())
+            None => panic!("Error: failed to acquire \"{}\"", import.name())
         }
     }
     (HOST.clone(), EXPECT.clone())
@@ -65,7 +65,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_log cannot get_export \"memory\"");
+                            println!("Error: proxy_log cannot get_export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -90,7 +90,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         }
 
                         println!(
-                            "=>   proxy_log | Level: {} | Message: {}",
+                            "[vm->host] proxy_log | Level: {} | Message: {}",
                             level, string_msg
                         );
                     }
@@ -108,7 +108,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_get_current_time_nanoseconds cannot get export \"memory\"");
+                            println!("Error: proxy_get_current_time_nanoseconds cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -167,7 +167,10 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                 |_caller: Caller<'_>, _return_buffer_data: i32, _return_buffer_size: i32| -> i32 {
                     // Default Function:
                     // Expectation:
-                    assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_1_0);
+                    assert_eq!(
+                        HOST.lock().unwrap().staged.get_abi_version(),
+                        AbiVersion::ProxyAbiVersion0_1_0
+                    );
                     println!("-     proxy_get_configuration | ");
 
                     return Status::InternalFailure as i32;
@@ -191,7 +194,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
                             println!(
-                                "=>   Error: proxy_get_buffer_bytes cannot get export \"memory\""
+                                "Error: proxy_get_buffer_bytes cannot get export \"memory\""
                             );
                             return Status::InternalFailure as i32;
                         }
@@ -201,7 +204,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
                         _ => {
                             println!(
-                                "=>   Error: proxy_get_buffer_bytes cannot get export \"malloc\""
+                                "Error: proxy_get_buffer_bytes cannot get export \"malloc\""
                             );
                             return Status::InternalFailure as i32;
                         }
@@ -279,7 +282,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
                             println!(
-                                "=>   Error: proxy_set_buffer_bytes cannot get export \"memory\""
+                                "Error: proxy_set_buffer_bytes cannot get export \"memory\""
                             );
                             return Status::InternalFailure as i32;
                         }
@@ -322,7 +325,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_get_header_map_pairs cannot get export \"memory\"");
+                            println!("Error: proxy_get_header_map_pairs cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -330,7 +333,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let malloc = match caller.get_export("malloc") {
                         Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
                         _ => {
-                            println!("=>   Error: proxy_get_header_map_pairs cannot get export \"malloc\"");
+                            println!("Error: proxy_get_header_map_pairs cannot get export \"malloc\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -379,7 +382,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_set_header_map_pairs cannot get export \"memory\"");
+                            println!("Error: proxy_set_header_map_pairs cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -427,7 +430,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_get_header_map_value cannot get export \"memory\"");
+                            println!("Error: proxy_get_header_map_value cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -435,7 +438,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let malloc = match caller.get_export("malloc") {
                         Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
                         _ => {
-                            println!("=>   Error: proxy_get_header_map_value cannot get export \"malloc\"");
+                            println!("Error: proxy_get_header_map_value cannot get export \"malloc\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -459,7 +462,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                             None => {
                                 match HOST.lock().unwrap().staged.get_header_map_value(map_type, &string_key) {
                                 Some(host_string_value) => host_string_value,
-                                None => panic!("=>   Error: proxy_get_header_map_value | no header map value for key {}", string_key)}
+                                None => panic!("Error: proxy_get_header_map_value | no header map value for key {}", string_key)}
                             }
                         };
 
@@ -506,7 +509,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_replace_header_map_value cannot get export \"memory\"");
+                            println!("Error: proxy_replace_header_map_value cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -558,7 +561,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_remove_header_map_value cannot get export \"memory\"");
+                            println!("Error: proxy_remove_header_map_value cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -603,7 +606,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_add_header_map_value cannot get export \"memory\"");
+                            println!("Error: proxy_add_header_map_value cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -653,7 +656,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                  -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_get_property | ");
+                    println!("[vm->host] proxy_get_property | ");
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -670,7 +673,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                  -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_set_property | ");
+                    println!("[vm->host] proxy_set_property | ");
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -688,7 +691,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                  -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_get_shared_data | ");
+                    println!("[vm->host] proxy_get_shared_data | ");
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -706,7 +709,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                  -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_set_shared_data | ");
+                    println!("[vm->host] proxy_set_shared_data | ");
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -718,7 +721,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                 |_caller: Caller<'_>, _name_data: i32, _name_size: i32, _return_id: i32| -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_register_shared_queue | ");
+                    println!("[vm->host] proxy_register_shared_queue | ");
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -736,7 +739,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                  -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_resolve_shared_queue | ");
+                    println!("[vm->host] proxy_resolve_shared_queue | ");
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -752,7 +755,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                  -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_dequeue_shared_queue |");
+                    println!("[vm->host] proxy_dequeue_shared_queue |");
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -764,7 +767,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                 |_caller: Caller<'_>, _queue_id: i32, _value_data: i32, _value_size: i32| -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_enqueue_shared_queue | ");
+                    println!("[vm->host] proxy_enqueue_shared_queue | ");
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -774,18 +777,24 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
                 // Expectation:
-                assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_2_0);
-                println!("=>   proxy_continue_stream | continuing stream");
+                assert_eq!(
+                    HOST.lock().unwrap().staged.get_abi_version(),
+                    AbiVersion::ProxyAbiVersion0_2_0
+                );
+                println!("[vm->host] proxy_continue_stream | continuing stream");
                 return Status::Ok as i32;
             }))
         }
 
         "proxy_close_stream" => {
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
-                // Default Function: 
+                // Default Function:
                 // Expectation:
-                assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_2_0);
-                println!("=>   proxy_close_stream | closing stream");
+                assert_eq!(
+                    HOST.lock().unwrap().staged.get_abi_version(),
+                    AbiVersion::ProxyAbiVersion0_2_0
+                );
+                println!("[vm->host] proxy_close_stream | closing stream");
                 return Status::Ok as i32;
             }))
         }
@@ -794,8 +803,11 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
                 // Expectation:
-                assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_1_0);
-                println!("=>   proxy_continue_request | continuing request");
+                assert_eq!(
+                    HOST.lock().unwrap().staged.get_abi_version(),
+                    AbiVersion::ProxyAbiVersion0_1_0
+                );
+                println!("[vm->host] proxy_continue_request | continuing request");
                 return Status::Ok as i32;
             }))
         }
@@ -804,8 +816,11 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
                 // Expectation:
-                assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_1_0);
-                println!("=>   proxy_continue_response | continuing reponse");
+                assert_eq!(
+                    HOST.lock().unwrap().staged.get_abi_version(),
+                    AbiVersion::ProxyAbiVersion0_1_0
+                );
+                println!("[vm->host] proxy_continue_response | continuing reponse");
                 return Status::Ok as i32;
             }))
         }
@@ -828,7 +843,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_send_local_response cannot get export \"memory\"");
+                            println!("Error: proxy_send_local_response cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -862,7 +877,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                             );
 
                         println!(
-                            "=>   proxy_send_local_response | status_code:  {}",
+                            "[vm->host] proxy_send_local_response | status_code:  {}",
                             status_code
                         );
                         println!(
@@ -887,7 +902,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
                 // Expectation:
-                println!("=>   proxy_clear_route_cache | ");
+                println!("[vm->host] proxy_clear_route_cache | ");
                 return Status::InternalFailure as i32;
             }))
         }
@@ -912,7 +927,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("=>   Error: proxy_http_call cannot get export \"memory\"");
+                            println!("Error: proxy_http_call cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -965,7 +980,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         );
                         return_token_add.copy_from_slice(&token_id.to_le_bytes());
 
-                        println!("=>   proxy_http_call | upstream_data:  {}", string_upstream);
+                        println!("[vm->host] proxy_http_call | upstream_data:  {}", string_upstream);
                         println!(
                             "                     | headers_data:   {:?}",
                             deserialized_header
@@ -991,7 +1006,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                 |_caller: Caller<'_>, context_id: i32| -> i32 {
                     // Default Function:
                     // Expectation:
-                    println!("=>   proxy_set_effective_context | {}", context_id);
+                    println!("[vm->host] proxy_set_effective_context | {}", context_id);
                     return Status::Ok as i32;
                 },
             ))
@@ -1001,7 +1016,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
                 // Expectation:
-                println!("=>   proxy_done | ");
+                println!("[vm->host] proxy_done | ");
                 return Status::InternalFailure as i32;
             }))
         }

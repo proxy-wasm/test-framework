@@ -26,7 +26,7 @@ pub struct HostHandle {
 impl HostHandle {
     pub fn new() -> HostHandle {
         HostHandle {
-            staged: HostSettings::new(AbiVersion::None),
+            staged: HostSettings::new(AbiVersion::UnknownAbiVersion),
         }
     }
 
