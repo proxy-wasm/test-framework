@@ -47,6 +47,7 @@ enum FunctionCall {
     ProxyOnContextCreate(i32, i32),
     ProxyOnLog(i32),
     ProxyOnDone(i32),
+    ProxyOnForeignFunction(i32, i32, i32),
     ProxyOnDelete(i32),
     ProxyOnVmStart(i32, i32),
     ProxyOnConfigure(i32, i32),
@@ -57,10 +58,10 @@ enum FunctionCall {
     ProxyOnDownstreamConnectionClose(i32, i32),
     ProxyOnUpstreamData(i32, i32, i32),
     ProxyOnUpstreamConnectionClose(i32, i32),
-    ProxyOnRequestHeaders(i32, i32),
+    ProxyOnRequestHeaders(i32, i32, i32),
     ProxyOnRequestBody(i32, i32, i32),
     ProxyOnRequestTrailers(i32, i32),
-    ProxyOnResponseHeaders(i32, i32),
+    ProxyOnResponseHeaders(i32, i32, i32),
     ProxyOnResponseBody(i32, i32, i32),
     ProxyOnResponseTrailers(i32, i32),
     ProxyOnHttpCallResponse(i32, i32, i32, i32, i32),
@@ -315,6 +316,20 @@ impl Tester {
                 return_wasm = Some(is_done);
             }
 
+            FunctionCall::ProxyOnForeignFunction(root_context_id, function_id, data_size) => {
+                assert_eq!(self.abi_version, AbiVersion::ProxyAbiVersion0_2_0);
+                let proxy_on_foreign_function = self
+                    .instance
+                    .get_func("proxy_on_foreign_function")
+                    .ok_or(anyhow::format_err!(
+                        "failed to find 'proxy_on_foreign_function' function export"
+                    ))?
+                    .get3::<i32, i32, i32, i32>()?;
+                let action = proxy_on_foreign_function(root_context_id, function_id, data_size)?;
+                println!("RETURN:    action -> {}", action);
+                return_wasm = Some(action);
+            }
+
             FunctionCall::ProxyOnLog(context_id) => {
                 let proxy_on_log = self
                     .instance
@@ -446,15 +461,26 @@ impl Tester {
                 proxy_on_upstream_connection_close(context_id, peer_type)?;
             }
 
-            FunctionCall::ProxyOnRequestHeaders(context_id, num_headers) => {
+            FunctionCall::ProxyOnRequestHeaders(context_id, num_headers, end_of_stream) => {
                 let proxy_on_request_headers = self
                     .instance
                     .get_func("proxy_on_request_headers")
                     .ok_or(anyhow::format_err!(
-                        "failed to find `proxy_on_request_headers` function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
-                let action = proxy_on_request_headers(context_id, num_headers)?;
+                    "failed to find `proxy_on_request_headers` function export"
+                ))?;
+                let action = match self.abi_version {
+                    AbiVersion::ProxyAbiVersion0_1_0 => {
+                        proxy_on_request_headers.get2::<i32, i32, i32>()?(context_id, num_headers)?
+                    }
+                    AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_request_headers
+                        .get3::<i32, i32, i32, i32>()?(
+                        context_id, num_headers, end_of_stream
+                    )?,
+                    _ => panic!(
+                        "proxy_on_request_headers not supported for ABI version: {:?}",
+                        self.abi_version
+                    ),
+                };
                 println!("RETURN:    action -> {}", action);
                 return_wasm = Some(action);
             }
@@ -485,15 +511,26 @@ impl Tester {
                 return_wasm = Some(action);
             }
 
-            FunctionCall::ProxyOnResponseHeaders(context_id, num_headers) => {
+            FunctionCall::ProxyOnResponseHeaders(context_id, num_headers, end_of_stream) => {
                 let proxy_on_response_headers = self
                     .instance
                     .get_func("proxy_on_response_headers")
                     .ok_or(anyhow::format_err!(
                         "failed to find `proxy_on_response_headers` function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
-                let action = proxy_on_response_headers(context_id, num_headers)?;
+                    ))?;
+                let action = match self.abi_version {
+                    AbiVersion::ProxyAbiVersion0_1_0 => {
+                        proxy_on_response_headers.get2::<i32, i32, i32>()?(context_id, num_headers)?
+                    }
+                    AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_response_headers
+                        .get3::<i32, i32, i32, i32>()?(
+                        context_id, num_headers, end_of_stream
+                    )?,
+                    _ => panic!(
+                        "proxy_on_response_headers not supported for ABI version: {:?}",
+                        self.abi_version
+                    ),
+                };
                 println!("RETURN:    action -> {}", action);
                 return_wasm = Some(action);
             }
@@ -602,6 +639,23 @@ impl Tester {
         println!("ARGS:      context_id -> {}", context_id);
         self.function_call = FunctionCall::ProxyOnDone(context_id);
         self.function_type = FunctionType::ReturnBool;
+        self
+    }
+
+    pub fn call_proxy_on_foreign_function(
+        &mut self,
+        root_context_id: i32,
+        function_id: i32,
+        data_size: i32,
+    ) -> &mut Self {
+        println!("CALL TO:   proxy_on_foreign_function");
+        println!(
+            "ARGS:      root_context_id -> {}, function_id -> {}, data_size -> {}",
+            root_context_id, function_id, data_size
+        );
+        self.function_call =
+            FunctionCall::ProxyOnForeignFunction(root_context_id, function_id, data_size);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -748,13 +802,15 @@ impl Tester {
         &mut self,
         context_id: i32,
         num_headers: i32,
+        end_of_stream: i32,
     ) -> &mut Self {
         println!("CALL TO:   proxy_on_request_headers");
         println!(
-            "ARGS:      context_id -> {}, num_headers -> {}",
-            context_id, num_headers
+            "ARGS:      context_id -> {}, num_headers -> {}, end_of_stream -> {}",
+            context_id, num_headers, end_of_stream
         );
-        self.function_call = FunctionCall::ProxyOnRequestHeaders(context_id, num_headers);
+        self.function_call =
+            FunctionCall::ProxyOnRequestHeaders(context_id, num_headers, end_of_stream);
         self.function_type = FunctionType::ReturnAction;
         self
     }
@@ -794,13 +850,15 @@ impl Tester {
         &mut self,
         context_id: i32,
         num_headers: i32,
+        end_of_stream: i32,
     ) -> &mut Self {
         println!("CALL TO:   proxy_on_response_headers");
         println!(
-            "ARGS:      context_id -> {}, num_headers -> {}",
-            context_id, num_headers
+            "ARGS:      context_id -> {}, num_headers -> {}, end_of_stream -> {}",
+            context_id, num_headers, end_of_stream
         );
-        self.function_call = FunctionCall::ProxyOnResponseHeaders(context_id, num_headers);
+        self.function_call =
+            FunctionCall::ProxyOnResponseHeaders(context_id, num_headers, end_of_stream);
         self.function_type = FunctionType::ReturnAction;
         self
     }

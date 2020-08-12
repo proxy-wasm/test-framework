@@ -77,7 +77,7 @@ pub enum ReturnType {
     Action(Action),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AbiVersion {
     None,
     ProxyAbiVersion0_1_0,

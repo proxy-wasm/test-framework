@@ -37,7 +37,7 @@ fn main() -> Result<()> {
         .execute_and_expect(ReturnType::None)?;
 
     http_headers_test
-        .call_proxy_on_request_headers(http_context, 0)
+        .call_proxy_on_request_headers(http_context, 0, 0)
         .expect_get_header_map_pairs(MapType::HttpRequestHeaders)
         .returning(vec![
             (":method", "GET"),
@@ -55,7 +55,7 @@ fn main() -> Result<()> {
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
     http_headers_test
-        .call_proxy_on_response_headers(http_context, 0)
+        .call_proxy_on_response_headers(http_context, 0, 0)
         .expect_get_header_map_pairs(MapType::HttpResponseHeaders)
         .returning(vec![(":status", "200"), ("Powered-By", "proxy-wasm")])
         .expect_log(LogLevel::Trace, "#2 <- :status: 200")

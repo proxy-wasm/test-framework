@@ -167,6 +167,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                 |_caller: Caller<'_>, _return_buffer_data: i32, _return_buffer_size: i32| -> i32 {
                     // Default Function:
                     // Expectation:
+                    assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_1_0);
                     println!("-     proxy_get_configuration | ");
 
                     return Status::InternalFailure as i32;
@@ -773,6 +774,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
                 // Expectation:
+                assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_2_0);
                 println!("=>   proxy_continue_stream | continuing stream");
                 return Status::Ok as i32;
             }))
@@ -780,8 +782,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_close_stream" => {
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
-                // Default Function:
+                // Default Function: 
                 // Expectation:
+                assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_2_0);
                 println!("=>   proxy_close_stream | closing stream");
                 return Status::Ok as i32;
             }))
@@ -791,6 +794,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
                 // Expectation:
+                assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_1_0);
                 println!("=>   proxy_continue_request | continuing request");
                 return Status::Ok as i32;
             }))
@@ -800,6 +804,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
                 // Expectation:
+                assert_eq!(HOST.lock().unwrap().staged.get_abi_version(), AbiVersion::ProxyAbiVersion0_1_0);
                 println!("=>   proxy_continue_response | continuing reponse");
                 return Status::Ok as i32;
             }))
