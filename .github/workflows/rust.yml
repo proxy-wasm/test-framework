@@ -1,0 +1,147 @@
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Rust
+
+on:
+
+  pull_request:
+    branches:
+    - master
+
+  push:
+    branches:
+    - master
+
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+
+  licenses:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Check licenses
+      run: |
+        go get -u github.com/google/addlicense
+        export PATH=$PATH:$(go env GOPATH)/bin
+        addlicense -check .
+
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run cargo audit
+      run: |
+        cargo generate-lockfile
+        cargo audit
+
+  outdated:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run cargo outdated
+      run: cargo outdated --exit-code 1
+
+  stable:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Update Rust
+      run: rustup toolchain install stable --component clippy --component rustfmt
+
+    - name: Build
+      env:
+        RUSTFLAGS: -D warnings
+      run: cargo build --release --all-targets
+
+    - name: Format (rustfmt)
+      run: cargo fmt -- --check
+
+    - name: Format (manifest)
+      run: cargo verify-project
+
+    - name: Package (docs)
+      run: cargo doc --no-deps
+
+  nightly:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Update Rust
+      run: rustup toolchain install nightly --component clippy --component rustfmt
+
+    - name: Build
+      env:
+        RUSTFLAGS: -D warnings
+      run: cargo +nightly build --release --all-targets
+
+    - name: Format (rustfmt)
+      run: cargo +nightly fmt -- --check
+
+    - name: Format (manifest)
+      run: cargo +nightly verify-project
+
+    - name: Package (docs)
+      run: cargo +nightly doc --no-deps
+
+  rust-examples:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout (test framework)
+      uses: actions/checkout@v2
+
+    - name: Checkout (Rust SDK)
+      uses: actions/checkout@v2
+      with:
+        repository: proxy-wasm/proxy-wasm-rust-sdk
+        path: proxy-wasm-rust-sdk
+
+    - name: Update Rust
+      run: |
+        rustup toolchain install stable --component clippy --component rustfmt
+        rustup target add wasm32-unknown-unknown
+
+    - name: Build (test framework)
+      env:
+        RUSTFLAGS: -D warnings
+      run: cargo build --release --all-targets
+
+    - name: Build (Rust SDK examples)
+      env:
+        RUSTFLAGS: -C link-args=-S -D warnings
+      run: |
+        cd proxy-wasm-rust-sdk
+        cargo build --target=wasm32-unknown-unknown --release --examples
+
+    - name: Test (hello_world)
+      run: target/release/examples/hello_world proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/hello_world.wasm
+
+    - name: Test (http_auth_random)
+      run: target/release/examples/http_auth_random proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_auth_random.wasm
+
+    - name: Test (http_headers)
+      run: target/release/examples/http_headers proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_headers.wasm
