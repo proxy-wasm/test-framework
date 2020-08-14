@@ -29,38 +29,6 @@ on:
 
 jobs:
 
-  licenses:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Check licenses
-      run: |
-        go get -u github.com/google/addlicense
-        export PATH=$PATH:$(go env GOPATH)/bin
-        addlicense -check .
-
-  audit:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Run cargo audit
-      run: |
-        cargo generate-lockfile
-        cargo audit
-
-  outdated:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Run cargo outdated
-      run: cargo outdated --exit-code 1
-
   stable:
     runs-on: ubuntu-latest
 
@@ -147,7 +115,7 @@ jobs:
     - name: Package (docs)
       run: cargo doc --no-deps
 
-  rust-sdk-examples:
+  examples:
     runs-on: ubuntu-latest
 
     steps:
@@ -204,3 +172,35 @@ jobs:
 
     - name: Test (http_headers)
       run: target/release/examples/http_headers proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_headers.wasm
+
+  licenses:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Check licenses
+      run: |
+        go get -u github.com/google/addlicense
+        export PATH=$PATH:$(go env GOPATH)/bin
+        addlicense -check .
+
+  outdated:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run cargo outdated
+      run: cargo outdated --exit-code 1
+
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run cargo audit
+      run: |
+        cargo generate-lockfile
+        cargo audit
