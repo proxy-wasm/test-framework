@@ -13,14 +13,13 @@
 // limitations under the License.
 
 use anyhow::Result;
-use proxy_wasm_test_framework::{tester, types::*};
-use std::env;
+use structopt::StructOpt;
+use proxy_wasm_test_framework::tester;
+use proxy_wasm_test_framework::types::*;
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
-    assert_eq!(args.len(), 2);
-    let hello_world_path = &args[1];
-    let mut hello_world_test = tester::test(hello_world_path)?;
+    let args = tester::MockSettings::from_args();
+    let mut hello_world_test = tester::mock(args)?;
 
     hello_world_test
         .call_start()

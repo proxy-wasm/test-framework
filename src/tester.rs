@@ -21,12 +21,23 @@ use crate::types::*;
 
 use anyhow::Result;
 use std::sync::{Arc, Mutex, MutexGuard};
+use structopt::StructOpt;
 use wasmtime::*;
 
-pub fn test(wasm_file: &str) -> Result<Tester> {
+#[derive(Debug, StructOpt)]
+#[structopt(name = "Mock Settings", about = "CLI for Proxy-Wasm Test Framework", rename_all = "kebab-case")]
+pub struct MockSettings {
+    pub wasm_path: String,
+    #[structopt(short = "t", long)]
+    pub trace: bool,
+    #[structopt(short = "a", long)]
+    pub allow_unexpected: bool,
+}
+
+pub fn mock(mock_settings: MockSettings) -> Result<Tester> {
     // initialize wasm engine and shared cache
     let store = Store::default();
-    let module = Module::from_file(store.engine(), wasm_file)?;
+    let module = Module::from_file(store.engine(), mock_settings.wasm_path)?;
 
     // generate and link host function implementations
     let abi_version = get_abi_version(&module);
@@ -76,6 +87,7 @@ enum FunctionType {
 }
 
 pub struct Tester {
+    mock_settings: MockSettings,
     abi_version: AbiVersion,
     instance: Instance,
     defaults: Arc<Mutex<HostHandle>>,

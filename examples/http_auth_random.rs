@@ -13,14 +13,13 @@
 // limitations under the License.
 
 use anyhow::Result;
-use proxy_wasm_test_framework::{tester, types::*};
-use std::env;
+use structopt::StructOpt;
+use proxy_wasm_test_framework::tester;
+use proxy_wasm_test_framework::types::*;
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
-    assert_eq!(args.len(), 2);
-    let http_auth_random_path = &args[1];
-    let mut http_auth_random = tester::test(http_auth_random_path)?;
+    let args = tester::MockSettings::from_args();
+    let mut http_auth_random = tester::mock(args)?;
 
     http_auth_random
         .call_start()
