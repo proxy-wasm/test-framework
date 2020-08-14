@@ -32,8 +32,8 @@ use wasmtime::*;
 )]
 pub struct MockSettings {
     pub wasm_path: String,
-    #[structopt(short = "t", long)]
-    pub trace: bool,
+    #[structopt(short = "q", long)]
+    pub quiet: bool,
     #[structopt(short = "a", long)]
     pub allow_unexpected: bool,
 }
@@ -123,16 +123,8 @@ impl Tester {
             function_call: FunctionCall::FunctionNotSet,
             function_type: FunctionType::ReturnNotSet,
         };
-        tester.print_expectations();
-        println!("");
         tester.update_expect_stage();
-        tester.print_expectations();
-        println!("");
-        tester.print_host_settings();
-        println!("");
         tester.reset_host_settings();
-        tester.print_host_settings();
-        println!("");
         tester
     }
 
@@ -248,6 +240,11 @@ impl Tester {
 
     /* ------------------------------------- High-level Expectation Setting ------------------------------------- */
 
+    pub fn set_quiet(&mut self, quiet: bool) {
+        self.mock_settings.quiet = quiet;
+        self.get_settings_handle().staged.set_quiet_mode(quiet);
+    }
+
     pub fn reset_default_tick_period_millis(&mut self) -> &mut Self {
         self.get_settings_handle().staged.reset_tick_period_millis();
         self
@@ -311,7 +308,7 @@ impl Tester {
         self.defaults
             .lock()
             .unwrap()
-            .reset(self.abi_version, self.mock_settings.trace);
+            .reset(self.abi_version, self.mock_settings.quiet);
     }
 
     /* ------------------------------------- Wasm Function Executation ------------------------------------- */
