@@ -37,33 +37,33 @@ fn main() -> Result<()> {
 
     http_headers_test
         .call_proxy_on_request_headers(http_context, 0, 0)
-        .expect_get_header_map_pairs(MapType::HttpRequestHeaders)
-        .returning(vec![
+        .expect_get_header_map_pairs(Some(MapType::HttpRequestHeaders))
+        .returning(Some(vec![
             (":method", "GET"),
             (":path", "/hello"),
             (":authority", "developer"),
-        ])
-        .expect_get_header_map_value(MapType::HttpRequestHeaders, ":path")
-        .returning("/hello")
+        ]))
+        .expect_get_header_map_value(Some(MapType::HttpRequestHeaders), Some(":path"))
+        .returning(Some("/hello"))
         .expect_send_local_response(
-            200,
+            Some(200),
             Some("Hello, World!\n"),
-            vec![("Hello", "World"), ("Powered-By", "proxy-wasm")],
-            -1,
+            Some(vec![("Hello", "World"), ("Powered-By", "proxy-wasm")]),
+            Some(-1),
         )
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
     http_headers_test
         .call_proxy_on_response_headers(http_context, 0, 0)
-        .expect_get_header_map_pairs(MapType::HttpResponseHeaders)
-        .returning(vec![(":status", "200"), ("Powered-By", "proxy-wasm")])
-        .expect_log(LogLevel::Trace, "#2 <- :status: 200")
-        .expect_log(LogLevel::Trace, "#2 <- Powered-By: proxy-wasm")
+        .expect_get_header_map_pairs(Some(MapType::HttpResponseHeaders))
+        .returning(Some(vec![(":status", "200"), ("Powered-By", "proxy-wasm")]))
+        .expect_log(Some(LogLevel::Trace), Some("#2 <- :status: 200"))
+        .expect_log(Some(LogLevel::Trace), Some("#2 <- Powered-By: proxy-wasm"))
         .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
     http_headers_test
         .call_proxy_on_log(http_context)
-        .expect_log(LogLevel::Trace, "#2 completed.")
+        .expect_log(Some(LogLevel::Trace), Some("#2 completed."))
         .execute_and_expect(ReturnType::None)?;
 
     return Ok(());

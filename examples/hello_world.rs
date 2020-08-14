@@ -32,14 +32,14 @@ fn main() -> Result<()> {
 
     hello_world_test
         .call_proxy_on_vm_start(root_context, 0)
-        .expect_log(LogLevel::Info, "Hello, World!")
-        .expect_set_tick_period_millis(5 * 10u64.pow(3))
+        .expect_log(Some(LogLevel::Info), Some("Hello, World!"))
+        .expect_set_tick_period_millis(Some(5 * 10u64.pow(3)))
         .execute_and_expect(ReturnType::Bool(true))?;
 
     hello_world_test
         .call_proxy_on_tick(root_context)
         .expect_get_current_time_nanos()
-        .returning(0 * 10u64.pow(9))
+        .returning(Some(0 * 10u64.pow(9)))
         .execute_and_expect(ReturnType::None)?;
 
     hello_world_test

@@ -99,6 +99,26 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        "proxy_set_tick_period_milliseconds" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, period: i32| -> i32 {
+                    // Default Function: receive and store tick period from proxy-wasm module
+                    // Expectation: assert received tick period is equal to expected
+                    HOST.lock()
+                        .unwrap()
+                        .staged
+                        .set_tick_period_millis(period as u64);
+                    EXPECT
+                        .lock()
+                        .unwrap()
+                        .staged
+                        .get_expect_set_tick_period_millis(period as u128);
+                    return Status::Ok as i32;
+                },
+            ))
+        }
+
         "proxy_get_current_time_nanoseconds" => {
             Some(Func::wrap(
                 &store,
@@ -132,29 +152,6 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         );
 
                         data.copy_from_slice(&time.to_le_bytes());
-                    }
-                    return Status::Ok as i32;
-                },
-            ))
-        }
-
-        "proxy_set_tick_period_milliseconds" => {
-            Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, period: i32| -> i32 {
-                    // Default Function: receive and store tick period from proxy-wasm module
-                    // Expectation: assert received tick period is equal to expected
-                    HOST.lock()
-                        .unwrap()
-                        .staged
-                        .set_tick_period_millis(period as u64);
-                    if let Some(tick_period_millis) = EXPECT
-                        .lock()
-                        .unwrap()
-                        .staged
-                        .get_expect_set_tick_period_millis()
-                    {
-                        assert_eq!(tick_period_millis, period as u128);
                     }
                     return Status::Ok as i32;
                 },
@@ -399,15 +396,11 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                                 .map(|(k, v)| (k as &str, v as &str))
                                 .collect(),
                         );
-
-                        if let Some(expect_header_map) = EXPECT
+                        EXPECT
                             .lock()
                             .unwrap()
                             .staged
-                            .get_expect_set_header_map_pairs(map_type)
-                        {
-                            assert_eq!(expect_header_map, header_map_ptr.to_vec())
-                        }
+                            .get_expect_set_header_map_pairs(map_type, header_map_ptr);
                     }
                     return Status::Ok as i32;
                 },
@@ -882,7 +875,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                             .get_expect_send_local_response(
                                 status_code,
                                 string_body,
-                                header_data_ptr.to_vec(),
+                                &header_data_ptr,
                                 grpc_status,
                             );
 

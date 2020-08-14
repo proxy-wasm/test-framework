@@ -38,35 +38,39 @@ fn main() -> Result<()> {
     http_auth_random
         .call_proxy_on_request_headers(http_context, 0, 0)
         .expect_http_call(
-            "httpbin",
-            vec![
+            Some("httpbin"),
+            Some(vec![
                 (":method", "GET"),
                 (":path", "/bytes/1"),
                 (":authority", "httpbin.org"),
-            ],
+            ]),
             None,
-            vec![],
-            5 * 10u64.pow(3),
+            Some(vec![]),
+            Some(5 * 10u64.pow(3)),
         )
-        .returning(0)
+        .returning(Some(0))
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
     let buffer_data = "custom_developer_body";
     http_auth_random
         .call_proxy_on_http_call_response(http_context, 0, 0, buffer_data.len() as i32, 0)
-        .expect_get_buffer_bytes(BufferType::HttpCallResponseBody)
-        .returning(buffer_data)
+        .expect_get_buffer_bytes(Some(BufferType::HttpCallResponseBody))
+        .returning(Some(buffer_data))
         .expect_send_local_response(
-            403,
+            Some(403),
             Some("Access forbidden.\n"),
-            vec![("Powered-By", "proxy-wasm")],
-            -1,
+            Some(vec![("Powered-By", "proxy-wasm")]),
+            Some(-1),
         )
         .execute_and_expect(ReturnType::None)?;
 
     http_auth_random
         .call_proxy_on_response_headers(http_context, 0, 0)
-        .expect_replace_header_map_value(MapType::HttpResponseHeaders, "Powered-By", "proxy-wasm")
+        .expect_replace_header_map_value(
+            Some(MapType::HttpResponseHeaders),
+            Some("Powered-By"),
+            Some("proxy-wasm"),
+        )
         .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
     return Ok(());

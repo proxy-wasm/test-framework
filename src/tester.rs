@@ -130,14 +130,14 @@ impl Tester {
 
     /* ------------------------------------- Low-level Expectation Setting ------------------------------------- */
 
-    pub fn expect_log(&mut self, log_level: LogLevel, log_msg: &str) -> &mut Self {
+    pub fn expect_log(&mut self, log_level: Option<LogLevel>, log_msg: Option<&str>) -> &mut Self {
         self.get_expect_handle()
             .staged
-            .set_expect_log(log_level as i32, log_msg);
+            .set_expect_log(log_level.map(|data| data as i32), log_msg);
         self
     }
 
-    pub fn expect_set_tick_period_millis(&mut self, tick_period_millis: u64) -> &mut Self {
+    pub fn expect_set_tick_period_millis(&mut self, tick_period_millis: Option<u64>) -> &mut Self {
         self.get_expect_handle()
             .staged
             .set_expect_set_tick_period_millis(tick_period_millis);
@@ -148,78 +148,99 @@ impl Tester {
         ExpectGetCurrentTimeNanos::expecting(self)
     }
 
-    pub fn expect_get_buffer_bytes(&mut self, buffer_type: BufferType) -> ExpectGetBufferBytes {
-        ExpectGetBufferBytes::expecting(self, buffer_type as i32)
+    pub fn expect_get_buffer_bytes(
+        &mut self,
+        buffer_type: Option<BufferType>,
+    ) -> ExpectGetBufferBytes {
+        ExpectGetBufferBytes::expecting(self, buffer_type.map(|data| data as i32))
     }
 
     pub fn expect_set_buffer_bytes(
         &mut self,
-        buffer_type: BufferType,
-        buffer_data: &str,
+        buffer_type: Option<BufferType>,
+        buffer_data: Option<&str>,
     ) -> &mut Self {
         self.get_expect_handle()
             .staged
-            .set_expect_set_buffer_bytes(buffer_type as i32, buffer_data);
+            .set_expect_set_buffer_bytes(buffer_type.map(|data| data as i32), buffer_data);
         self
     }
 
-    pub fn expect_get_header_map_pairs(&mut self, map_type: MapType) -> ExpectGetHeaderMapPairs {
-        ExpectGetHeaderMapPairs::expecting(self, map_type as i32)
+    pub fn expect_get_header_map_pairs(
+        &mut self,
+        map_type: Option<MapType>,
+    ) -> ExpectGetHeaderMapPairs {
+        ExpectGetHeaderMapPairs::expecting(self, map_type.map(|data| data as i32))
     }
 
-    pub fn expect_set_header_map_pairs(&mut self, map_type: MapType) -> ExpectSetHeaderMapPairs {
-        ExpectSetHeaderMapPairs::expecting(self, map_type as i32)
+    pub fn expect_set_header_map_pairs(
+        &mut self,
+        map_type: Option<MapType>,
+        header_map_pairs: Option<Vec<(&str, &str)>>,
+    ) -> &mut Self {
+        self.get_expect_handle()
+            .staged
+            .set_expect_set_header_map_pairs(map_type.map(|data| data as i32), header_map_pairs);
+        self
     }
 
     pub fn expect_get_header_map_value(
         &mut self,
-        map_type: MapType,
-        header_map_key: &'static str,
+        map_type: Option<MapType>,
+        header_map_key: Option<&'static str>,
     ) -> ExpectGetHeaderMapValue {
-        ExpectGetHeaderMapValue::expecting(self, map_type as i32, header_map_key)
+        ExpectGetHeaderMapValue::expecting(self, map_type.map(|data| data as i32), header_map_key)
     }
 
     pub fn expect_replace_header_map_value(
         &mut self,
-        map_type: MapType,
-        header_map_key: &str,
-        header_map_value: &str,
+        map_type: Option<MapType>,
+        header_map_key: Option<&str>,
+        header_map_value: Option<&str>,
     ) -> &mut Self {
         self.get_expect_handle()
             .staged
-            .set_expect_replace_header_map_value(map_type as i32, header_map_key, header_map_value);
+            .set_expect_replace_header_map_value(
+                map_type.map(|data| data as i32),
+                header_map_key,
+                header_map_value,
+            );
         self
     }
 
     pub fn expect_remove_header_map_value(
         &mut self,
-        map_type: MapType,
-        header_map_key: &str,
+        map_type: Option<MapType>,
+        header_map_key: Option<&str>,
     ) -> &mut Self {
         self.get_expect_handle()
             .staged
-            .set_expect_remove_header_map_value(map_type as i32, header_map_key);
+            .set_expect_remove_header_map_value(map_type.map(|data| data as i32), header_map_key);
         self
     }
 
     pub fn expect_add_header_map_value(
         &mut self,
-        map_type: MapType,
-        header_map_key: &str,
-        header_map_value: &str,
+        map_type: Option<MapType>,
+        header_map_key: Option<&str>,
+        header_map_value: Option<&str>,
     ) -> &mut Self {
         self.get_expect_handle()
             .staged
-            .set_expect_add_header_map_value(map_type as i32, header_map_key, header_map_value);
+            .set_expect_add_header_map_value(
+                map_type.map(|data| data as i32),
+                header_map_key,
+                header_map_value,
+            );
         self
     }
 
     pub fn expect_send_local_response(
         &mut self,
-        status_code: i32,
+        status_code: Option<i32>,
         body: Option<&str>,
-        headers: Vec<(&str, &str)>,
-        grpc_status: i32,
+        headers: Option<Vec<(&str, &str)>>,
+        grpc_status: Option<i32>,
     ) -> &mut Self {
         self.get_expect_handle()
             .staged
@@ -229,11 +250,11 @@ impl Tester {
 
     pub fn expect_http_call(
         &mut self,
-        upstream: &'static str,
-        headers: Vec<(&'static str, &'static str)>,
+        upstream: Option<&'static str>,
+        headers: Option<Vec<(&'static str, &'static str)>>,
         body: Option<&'static str>,
-        trailers: Vec<(&'static str, &'static str)>,
-        timeout: u64,
+        trailers: Option<Vec<(&'static str, &'static str)>>,
+        timeout: Option<u64>,
     ) -> ExpectHttpCall {
         ExpectHttpCall::expecting(self, upstream, headers, body, trailers, timeout)
     }
