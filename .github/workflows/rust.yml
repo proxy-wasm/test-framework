@@ -72,7 +72,7 @@ jobs:
 
     - name: Cache (generate keys)
       run: |
-        rustc --version > rust-toolchain
+        rustc --version | cut -d " " -f2 - > rust-toolchain
         cargo generate-lockfile
 
     - name: Cache
@@ -113,7 +113,7 @@ jobs:
 
     - name: Cache (generate keys)
       run: |
-        rustc --version > rust-toolchain
+        rustc --version | tr " " "-" | cut -d "-" -f3,5-7 | cut -b1-18 > rust-toolchain
         cargo generate-lockfile
 
     - name: Cache
@@ -161,7 +161,7 @@ jobs:
 
     - name: Cache (generate keys)
       run: |
-        rustc --version > rust-toolchain
+        rustc --version | cut -d " " -f2 - > rust-toolchain
         cargo generate-lockfile
         cd proxy-wasm-rust-sdk && cargo generate-lockfile
 
