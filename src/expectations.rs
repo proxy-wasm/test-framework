@@ -25,12 +25,12 @@ pub struct ExpectHandle {
 impl ExpectHandle {
     pub fn new() -> ExpectHandle {
         ExpectHandle {
-            staged: Expect::new(),
+            staged: Expect::new(false),
         }
     }
 
-    pub fn update_stage(&mut self) {
-        self.staged = Expect::new();
+    pub fn update_stage(&mut self, allow_unexpected: bool) {
+        self.staged = Expect::new(allow_unexpected);
     }
 
     pub fn assert_stage(&self) {
@@ -50,6 +50,7 @@ impl ExpectHandle {
 // Structure for setting low-level expectations over specific host functions
 #[derive(Debug)]
 pub struct Expect {
+    allow_unexpected: bool,
     pub expect_count: i32,
     log_message: Vec<(i32, String)>,
     tick_period_millis: Vec<Duration>,
@@ -62,14 +63,14 @@ pub struct Expect {
     replace_header_map_value: Vec<(i32, String, String)>,
     remove_header_map_value: Vec<(i32, String)>,
     add_header_map_value: Vec<(i32, String, String)>,
-
     send_local_response: Vec<(i32, Option<String>, Bytes, i32)>,
     http_call: Vec<(String, Bytes, Option<String>, Bytes, Duration, u32)>,
 }
 
 impl Expect {
-    pub fn new() -> Expect {
+    pub fn new(allow_unexpected: bool) -> Expect {
         Expect {
+            allow_unexpected: allow_unexpected,
             expect_count: 0,
             log_message: vec![],
             tick_period_millis: vec![],
@@ -94,7 +95,12 @@ impl Expect {
 
     pub fn get_expect_log(&mut self, log_level: i32) -> Option<String> {
         match self.log_message.len() {
-            0 => None,
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                None
+            }
             _ => {
                 self.expect_count -= 1;
                 assert_eq!(log_level, self.log_message[0].0);
@@ -111,7 +117,12 @@ impl Expect {
 
     pub fn get_expect_set_tick_period_millis(&mut self) -> Option<u128> {
         match self.tick_period_millis.len() {
-            0 => None,
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                None
+            }
             _ => {
                 self.expect_count -= 1;
                 Some(self.tick_period_millis.remove(0).as_millis())
@@ -127,7 +138,12 @@ impl Expect {
 
     pub fn get_expect_get_current_time_nanos(&mut self) -> Option<u128> {
         match self.current_time_nanos.len() {
-            0 => None,
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                None
+            }
             _ => {
                 self.expect_count -= 1;
                 Some(
@@ -149,7 +165,12 @@ impl Expect {
 
     pub fn get_expect_get_buffer_bytes(&mut self, buffer_type: i32) -> Option<Bytes> {
         match self.get_buffer_bytes.len() {
-            0 => None,
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                None
+            }
             _ => {
                 self.expect_count -= 1;
                 assert_eq!(buffer_type, self.get_buffer_bytes[0].0);
@@ -188,7 +209,12 @@ impl Expect {
 
     pub fn get_expect_get_header_map_pairs(&mut self, map_type: i32) -> Option<Bytes> {
         match self.get_header_map_pairs.len() {
-            0 => None,
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                None
+            }
             _ => {
                 self.expect_count -= 1;
                 assert_eq!(map_type, self.get_header_map_pairs[0].0);
@@ -209,7 +235,12 @@ impl Expect {
 
     pub fn get_expect_set_header_map_pairs(&mut self, map_type: i32) -> Option<Bytes> {
         match self.set_header_map_pairs.len() {
-            0 => None,
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                None
+            }
             _ => {
                 self.expect_count -= 1;
                 assert_eq!(map_type, self.set_header_map_pairs[0].0);
@@ -238,7 +269,12 @@ impl Expect {
         header_map_key: &str,
     ) -> Option<String> {
         match self.get_header_map_value.len() {
-            0 => None,
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                None
+            }
             _ => {
                 self.expect_count -= 1;
                 assert_eq!(map_type, self.get_header_map_value[0].0);
@@ -398,7 +434,12 @@ impl Expect {
         timeout: i32,
     ) -> Option<u32> {
         match self.http_call.len() {
-            0 => None,
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                None
+            }
             _ => {
                 self.expect_count -= 1;
                 let http_call_tuple = self.http_call.remove(0);

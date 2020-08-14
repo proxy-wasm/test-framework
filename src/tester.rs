@@ -24,8 +24,12 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use structopt::StructOpt;
 use wasmtime::*;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "Mock Settings", about = "CLI for Proxy-Wasm Test Framework", rename_all = "kebab-case")]
+#[derive(Debug, StructOpt, Clone)]
+#[structopt(
+    name = "Mock Settings",
+    about = "CLI for Proxy-Wasm Test Framework",
+    rename_all = "kebab-case"
+)]
 pub struct MockSettings {
     pub wasm_path: String,
     #[structopt(short = "t", long)]
@@ -37,7 +41,7 @@ pub struct MockSettings {
 pub fn mock(mock_settings: MockSettings) -> Result<Tester> {
     // initialize wasm engine and shared cache
     let store = Store::default();
-    let module = Module::from_file(store.engine(), mock_settings.wasm_path)?;
+    let module = Module::from_file(store.engine(), &mock_settings.wasm_path)?;
 
     // generate and link host function implementations
     let abi_version = get_abi_version(&module);
@@ -47,7 +51,13 @@ pub fn mock(mock_settings: MockSettings) -> Result<Tester> {
     let instance = Instance::new(&store, &module, &(*imports).lock().unwrap()[..])?;
 
     // create mock test proxy-wasm object
-    let tester = Tester::new(abi_version, instance, host_settings, expectations);
+    let tester = Tester::new(
+        abi_version,
+        mock_settings,
+        instance,
+        host_settings,
+        expectations,
+    );
     return Ok(tester);
 }
 
@@ -87,8 +97,8 @@ enum FunctionType {
 }
 
 pub struct Tester {
-    mock_settings: MockSettings,
     abi_version: AbiVersion,
+    mock_settings: MockSettings,
     instance: Instance,
     defaults: Arc<Mutex<HostHandle>>,
     expect: Arc<Mutex<ExpectHandle>>,
@@ -99,18 +109,31 @@ pub struct Tester {
 impl Tester {
     fn new(
         abi_version: AbiVersion,
+        mock_settings: MockSettings,
         instance: Instance,
         host_settings: Arc<Mutex<HostHandle>>,
         expect: Arc<Mutex<ExpectHandle>>,
     ) -> Tester {
-        Tester {
+        let mut tester = Tester {
             abi_version: abi_version,
+            mock_settings: mock_settings,
             instance: instance,
             defaults: host_settings,
             expect: expect,
             function_call: FunctionCall::FunctionNotSet,
             function_type: FunctionType::ReturnNotSet,
-        }
+        };
+        tester.print_expectations();
+        println!("");
+        tester.update_expect_stage();
+        tester.print_expectations();
+        println!("");
+        tester.print_host_settings();
+        println!("");
+        tester.reset_host_settings();
+        tester.print_host_settings();
+        println!("");
+        tester
     }
 
     /* ------------------------------------- Low-level Expectation Setting ------------------------------------- */
@@ -266,7 +289,10 @@ impl Tester {
     }
 
     fn update_expect_stage(&mut self) {
-        self.expect.lock().unwrap().update_stage();
+        self.expect
+            .lock()
+            .unwrap()
+            .update_stage(self.mock_settings.allow_unexpected);
     }
 
     fn assert_expect_stage(&mut self) {
@@ -282,7 +308,10 @@ impl Tester {
     }
 
     pub fn reset_host_settings(&mut self) {
-        self.defaults.lock().unwrap().reset(self.abi_version);
+        self.defaults
+            .lock()
+            .unwrap()
+            .reset(self.abi_version, self.mock_settings.trace);
     }
 
     /* ------------------------------------- Wasm Function Executation ------------------------------------- */
@@ -338,7 +367,10 @@ impl Tester {
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
                 let action = proxy_on_foreign_function(root_context_id, function_id, data_size)?;
-                println!("[host<-vm] proxy_on_foreign_function return: action={}", action);
+                println!(
+                    "[host<-vm] proxy_on_foreign_function return: action={}",
+                    action
+                );
                 return_wasm = Some(action);
             }
 
@@ -421,7 +453,10 @@ impl Tester {
                     ))?
                     .get1::<i32, i32>()?;
                 let action = proxy_on_new_connection(context_id)?;
-                println!("[host<-vm] proxy_on_new_connection return: action={}", action);
+                println!(
+                    "[host<-vm] proxy_on_new_connection return: action={}",
+                    action
+                );
                 return_wasm = Some(action);
             }
 
@@ -434,7 +469,10 @@ impl Tester {
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
                 let action = proxy_on_downstream_data(context_id, data_size, end_of_stream)?;
-                println!("[host<-vm] proxy_on_downstream_data return: action={}", action);
+                println!(
+                    "[host<-vm] proxy_on_downstream_data return: action={}",
+                    action
+                );
                 return_wasm = Some(action);
             }
 
@@ -458,7 +496,10 @@ impl Tester {
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
                 let action = proxy_on_upstream_data(context_id, data_size, end_of_stream)?;
-                println!("[host<-vm] proxy_on_upstream_data return: action={}", action);
+                println!(
+                    "[host<-vm] proxy_on_upstream_data return: action={}",
+                    action
+                );
                 return_wasm = Some(action);
             }
 
@@ -493,7 +534,10 @@ impl Tester {
                         self.abi_version
                     ),
                 };
-                println!("[host<-vm] proxy_on_request_headers return: action={}", action);
+                println!(
+                    "[host<-vm] proxy_on_request_headers return: action={}",
+                    action
+                );
                 return_wasm = Some(action);
             }
 
@@ -519,7 +563,10 @@ impl Tester {
                     ))?
                     .get2::<i32, i32, i32>()?;
                 let action = proxy_on_request_trailers(context_id, num_trailers)?;
-                println!("[host<-vm] proxy_on_request_trailers return: action={}", action);
+                println!(
+                    "[host<-vm] proxy_on_request_trailers return: action={}",
+                    action
+                );
                 return_wasm = Some(action);
             }
 
@@ -543,7 +590,10 @@ impl Tester {
                         self.abi_version
                     ),
                 };
-                println!("[host<-vm] proxy_on_response_headers return: action={}", action);
+                println!(
+                    "[host<-vm] proxy_on_response_headers return: action={}",
+                    action
+                );
                 return_wasm = Some(action);
             }
 
@@ -569,7 +619,10 @@ impl Tester {
                     ))?
                     .get2::<i32, i32, i32>()?;
                 let action = proxy_on_response_trailers(context_id, num_trailers)?;
-                println!("[host<-vm] proxy_on_response_body return: action={}", action);
+                println!(
+                    "[host<-vm] proxy_on_response_body return: action={}",
+                    action
+                );
                 return_wasm = Some(action);
             }
 

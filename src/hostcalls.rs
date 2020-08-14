@@ -48,7 +48,7 @@ pub fn generate_import_list(
     for import in imports {
         match get_hostfunc(&store, abi_version, &import) {
             Some(func) => (*func_vec).lock().unwrap().push(func.into()),
-            None => panic!("Error: failed to acquire \"{}\"", import.name())
+            None => panic!("Error: failed to acquire \"{}\"", import.name()),
         }
     }
     (HOST.clone(), EXPECT.clone())
@@ -193,9 +193,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!(
-                                "Error: proxy_get_buffer_bytes cannot get export \"memory\""
-                            );
+                            println!("Error: proxy_get_buffer_bytes cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -203,9 +201,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let malloc = match caller.get_export("malloc") {
                         Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
                         _ => {
-                            println!(
-                                "Error: proxy_get_buffer_bytes cannot get export \"malloc\""
-                            );
+                            println!("Error: proxy_get_buffer_bytes cannot get export \"malloc\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -281,9 +277,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!(
-                                "Error: proxy_set_buffer_bytes cannot get export \"memory\""
-                            );
+                            println!("Error: proxy_set_buffer_bytes cannot get export \"memory\"");
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -325,7 +319,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("Error: proxy_get_header_map_pairs cannot get export \"memory\"");
+                            println!(
+                                "Error: proxy_get_header_map_pairs cannot get export \"memory\""
+                            );
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -333,7 +329,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let malloc = match caller.get_export("malloc") {
                         Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
                         _ => {
-                            println!("Error: proxy_get_header_map_pairs cannot get export \"malloc\"");
+                            println!(
+                                "Error: proxy_get_header_map_pairs cannot get export \"malloc\""
+                            );
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -382,7 +380,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("Error: proxy_set_header_map_pairs cannot get export \"memory\"");
+                            println!(
+                                "Error: proxy_set_header_map_pairs cannot get export \"memory\""
+                            );
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -430,7 +430,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("Error: proxy_get_header_map_value cannot get export \"memory\"");
+                            println!(
+                                "Error: proxy_get_header_map_value cannot get export \"memory\""
+                            );
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -438,7 +440,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let malloc = match caller.get_export("malloc") {
                         Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
                         _ => {
-                            println!("Error: proxy_get_header_map_value cannot get export \"malloc\"");
+                            println!(
+                                "Error: proxy_get_header_map_value cannot get export \"malloc\""
+                            );
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -561,7 +565,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("Error: proxy_remove_header_map_value cannot get export \"memory\"");
+                            println!(
+                                "Error: proxy_remove_header_map_value cannot get export \"memory\""
+                            );
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -606,7 +612,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("Error: proxy_add_header_map_value cannot get export \"memory\"");
+                            println!(
+                                "Error: proxy_add_header_map_value cannot get export \"memory\""
+                            );
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -843,7 +851,9 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("Error: proxy_send_local_response cannot get export \"memory\"");
+                            println!(
+                                "Error: proxy_send_local_response cannot get export \"memory\""
+                            );
                             return Status::InternalFailure as i32;
                         }
                     };
@@ -980,7 +990,10 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         );
                         return_token_add.copy_from_slice(&token_id.to_le_bytes());
 
-                        println!("[vm->host] proxy_http_call | upstream_data:  {}", string_upstream);
+                        println!(
+                            "[vm->host] proxy_http_call | upstream_data:  {}",
+                            string_upstream
+                        );
                         println!(
                             "                     | headers_data:   {:?}",
                             deserialized_header

@@ -26,12 +26,12 @@ pub struct HostHandle {
 impl HostHandle {
     pub fn new() -> HostHandle {
         HostHandle {
-            staged: HostSettings::new(AbiVersion::UnknownAbiVersion),
+            staged: HostSettings::new(AbiVersion::UnknownAbiVersion, false),
         }
     }
 
-    pub fn reset(&mut self, abi_version: AbiVersion) {
-        self.staged = HostSettings::new(abi_version);
+    pub fn reset(&mut self, abi_version: AbiVersion, trace: bool) {
+        self.staged = HostSettings::new(abi_version, trace);
     }
 
     pub fn print_staged(&self) {
@@ -43,15 +43,17 @@ impl HostHandle {
 #[derive(Debug)]
 pub struct HostSettings {
     abi_version: AbiVersion,
+    trace: bool,
     tick_period_millis: Duration,
     header_map_pairs: HashMap<i32, HashMap<String, String>>,
     buffer_bytes: HashMap<i32, Bytes>,
 }
 
 impl HostSettings {
-    pub fn new(abi_version: AbiVersion) -> HostSettings {
+    pub fn new(abi_version: AbiVersion, trace: bool) -> HostSettings {
         HostSettings {
             abi_version: abi_version,
+            trace: trace,
             tick_period_millis: Duration::new(0, 0),
             header_map_pairs: default_header_map_pairs(),
             buffer_bytes: default_buffer_bytes(),

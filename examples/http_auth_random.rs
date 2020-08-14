@@ -13,9 +13,9 @@
 // limitations under the License.
 
 use anyhow::Result;
-use structopt::StructOpt;
 use proxy_wasm_test_framework::tester;
 use proxy_wasm_test_framework::types::*;
+use structopt::StructOpt;
 
 fn main() -> Result<()> {
     let args = tester::MockSettings::from_args();
