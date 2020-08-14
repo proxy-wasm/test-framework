@@ -168,7 +168,7 @@ jobs:
     - name: Cache (generate keys)
       run: |
         cargo generate-lockfile
-        cd proxy-wasm-rust-sdk && cargo generate-lockfile
+        cd proxy-wasm-rust-sdk && cargo generate-lockfile && cd ..
         rustc --version | cut -d " " -f2 - > rust-toolchain
 
     - name: Cache
@@ -194,7 +194,7 @@ jobs:
     - name: Build (Rust SDK examples)
       env:
         RUSTFLAGS: -C link-args=-S -D warnings
-      run: cd proxy-wasm-rust-sdk && cargo build --target=wasm32-unknown-unknown --release --examples
+      run: cd proxy-wasm-rust-sdk && cargo build --release --examples --target=wasm32-unknown-unknown && cd ..
 
     - name: Test (hello_world)
       run: target/release/examples/hello_world proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/hello_world.wasm
