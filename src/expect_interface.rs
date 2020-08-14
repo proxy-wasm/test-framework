@@ -17,7 +17,7 @@ use crate::tester::Tester;
 // As of now, the following expectations do not require "fn returning()" implementations and hence
 // no structure is provided for them. Setting of these expectations are built directly into tester.rs:
 // proxy_log(), proxy_set_tick_period_millis(), proxy_set_buffer_bytes(), proxy_set_header_map_pairs,
-// proxy_replace_header_map_value(), proxy_remove_header_map_value(), proxy_add_header_map_value(), 
+// proxy_replace_header_map_value(), proxy_remove_header_map_value(), proxy_add_header_map_value(),
 // proxy_send_local_response(), etc.
 
 pub struct ExpectGetCurrentTimeNanos<'a> {
