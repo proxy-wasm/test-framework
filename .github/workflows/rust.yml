@@ -72,8 +72,8 @@ jobs:
 
     - name: Cache (generate keys)
       run: |
-        rustc --version | cut -d " " -f2 - > rust-toolchain
         cargo generate-lockfile
+        rustc --version | cut -d " " -f2 - > rust-toolchain
 
     - name: Cache
       uses: actions/cache@v2
@@ -85,6 +85,9 @@ jobs:
           ~/.cargo/registry
           target
         key: ${{ hashFiles('rust-toolchain', 'Cargo.lock') }}
+
+    - name: Cache (cleanup)
+      run: rm -f rust-toolchain
 
     - name: Build
       env:
@@ -113,8 +116,8 @@ jobs:
 
     - name: Cache (generate keys)
       run: |
-        rustc --version | tr " " "-" | cut -d "-" -f3,5-7 | cut -b1-18 > rust-toolchain
         cargo generate-lockfile
+        rustc --version | tr " " "-" | cut -d "-" -f3,5-7 | cut -b1-18 > rust-toolchain
 
     - name: Cache
       uses: actions/cache@v2
@@ -126,6 +129,9 @@ jobs:
           ~/.cargo/registry
           target
         key: ${{ hashFiles('rust-toolchain', 'Cargo.lock') }}
+
+    - name: Cache (cleanup)
+      run: rm -f rust-toolchain
 
     - name: Build
       env:
@@ -161,9 +167,9 @@ jobs:
 
     - name: Cache (generate keys)
       run: |
-        rustc --version | cut -d " " -f2 - > rust-toolchain
         cargo generate-lockfile
         cd proxy-wasm-rust-sdk && cargo generate-lockfile
+        rustc --version | cut -d " " -f2 - > rust-toolchain
 
     - name: Cache
       uses: actions/cache@v2
@@ -176,6 +182,9 @@ jobs:
           target
           proxy-wasm-rust-sdk/target
         key: ${{ hashFiles('rust-toolchain', 'Cargo.lock', 'proxy-wasm-rust-sdk/Cargo.lock') }}
+
+    - name: Cache (cleanup)
+      run: rm -f rust-toolchain
 
     - name: Build (test framework)
       env:
