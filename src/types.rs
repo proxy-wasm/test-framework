@@ -84,4 +84,11 @@ pub enum AbiVersion {
     ProxyAbiVersion0_2_0,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ExpectStatus {
+    Expected,
+    Failed,
+    Unexpected,
+}
+
 pub type Bytes = Vec<u8>;
