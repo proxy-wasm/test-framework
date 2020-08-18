@@ -31,6 +31,68 @@ pub enum Action {
 }
 
 #[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum FilterStatus {
+    Continue = 0,
+    StopIteration = 1,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum FilterHeadersStatus {
+    Continue = 0,
+    StopIteration = 1,
+    ContinueAndEndStream = 2,
+    StopAllIterationAndBuffer = 3,
+    StopAllIterationAndWatermark = 4,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum FilterMetadataStatus {
+    Continue = 0,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum FilterTrailersStatus {
+    Continue = 0,
+    StopIteration = 1,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum FilterDataStatus {
+    Continue = 0,
+    StopIterationAndBuffer = 1,
+    StopIterationAndWatermark = 2,
+    StopIterationNoBuffer = 3,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+pub enum GrpcStatus {
+    Ok = 0,
+    Canceled = 1,
+    Unknown = 2,
+    InvalidArgument = 3,
+    DeadlineExceeded = 4,
+    NotFound = 5,
+    AlreadyExists = 6,
+    PermissionDenied = 7,
+    ResourceExhausted = 8,
+    FailedPrecondition = 9,
+    Aborted = 10,
+    OutOfRange = 11,
+    Unimplemented = 12,
+    Internal = 13,
+    Unavailable = 14,
+    DataLoss = 15,
+    Unauthenticated = 16,
+    InvalidCode = -1,
+}
+
+#[repr(u32)]
 #[derive(Debug)]
 pub enum Status {
     Ok = 0,
@@ -39,6 +101,22 @@ pub enum Status {
     Empty = 7,
     CasMismatch = 8,
     InternalFailure = 10,
+}
+
+#[repr(u32)]
+#[derive(Debug)]
+pub enum MetricType {
+    Counter = 0,
+    Gauge = 1,
+    Histogram = 2,
+}
+
+#[repr(u32)]
+#[derive(Debug)]
+pub enum CloseType {
+    Unknown = 0,
+    Local = 1,  // Close initiated by the proxy.
+    Remote = 2, // Close initiated by the peer.
 }
 
 #[repr(u32)]
@@ -75,6 +153,12 @@ pub enum ReturnType {
     None,
     Bool(bool),
     Action(Action),
+    FilterStatus(FilterStatus),
+    FilterHeadersStatus(FilterHeadersStatus),
+    FilterMetadataStatus(FilterMetadataStatus),
+    FilterTrailersStatus(FilterTrailersStatus),
+    FilterDataStatus(FilterDataStatus),
+    GrpcStatus(GrpcStatus),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

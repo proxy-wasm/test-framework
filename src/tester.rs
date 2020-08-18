@@ -65,15 +65,13 @@ pub fn mock(mock_settings: MockSettings) -> Result<Tester> {
 enum FunctionCall {
     FunctionNotSet,
     Start(),
-    ProxyOnContextCreate(i32, i32),
-    ProxyOnLog(i32),
-    ProxyOnDone(i32),
-    ProxyOnForeignFunction(i32, i32, i32),
-    ProxyOnDelete(i32),
     ProxyOnVmStart(i32, i32),
+    ProxyValidateConfiguration(i32, i32),
     ProxyOnConfigure(i32, i32),
     ProxyOnTick(i32),
+    ProxyOnForeignFunction(i32, i32, i32),
     ProxyOnQueueReady(i32, i32),
+    ProxyOnContextCreate(i32, i32),
     ProxyOnNewConnection(i32),
     ProxyOnDownstreamData(i32, i32, i32),
     ProxyOnDownstreamConnectionClose(i32, i32),
@@ -82,18 +80,33 @@ enum FunctionCall {
     ProxyOnRequestHeaders(i32, i32, i32),
     ProxyOnRequestBody(i32, i32, i32),
     ProxyOnRequestTrailers(i32, i32),
+    ProxyOnRequestMetadata(i32, i32),
     ProxyOnResponseHeaders(i32, i32, i32),
     ProxyOnResponseBody(i32, i32, i32),
     ProxyOnResponseTrailers(i32, i32),
+    ProxyOnResponseMetadata(i32, i32),
     ProxyOnHttpCallResponse(i32, i32, i32, i32, i32),
+    ProxyOnGrpcReceiveInitialMetadata(i32, i32, i32),
+    ProxyOnGrpcTrailingMetadata(i32, i32, i32),
+    ProxyOnGrpcReceive(i32, i32, i32),
+    ProxyOnGrpcClose(i32, i32, i32),
+    ProxyOnDone(i32),
+    ProxyOnLog(i32),
+    ProxyOnDelete(i32),
 }
 
 #[derive(Debug, PartialEq)]
 enum FunctionType {
     ReturnNotSet,
-    ReturnEmpty,
+    ReturnVoid,
     ReturnBool,
     ReturnAction,
+    ReturnFilterStatus,
+    ReturnFilterHeadersStatus,
+    ReturnFilterMetadataStatus,
+    ReturnFilterTrailersStatus,
+    ReturnFilterDataStatus,
+    ReturnGrpcStatus,
 }
 
 pub struct Tester {
@@ -672,7 +685,7 @@ impl Tester {
 
         match expect_wasm {
             ReturnType::None => {
-                assert_eq!(self.function_type, FunctionType::ReturnEmpty);
+                assert_eq!(self.function_type, FunctionType::ReturnVoid);
                 assert_eq!(return_wasm.is_none(), true);
             }
             ReturnType::Bool(expect_bool) => {
@@ -681,7 +694,31 @@ impl Tester {
             }
             ReturnType::Action(expect_action) => {
                 assert_eq!(self.function_type, FunctionType::ReturnAction);
-                assert_eq!(expect_action as i32, return_wasm.unwrap_or(-1))
+                assert_eq!(expect_action as i32, return_wasm.unwrap_or(-1));
+            }
+            ReturnType::FilterStatus(expect_status) => {
+                assert_eq!(self.function_type, FunctionType::ReturnFilterStatus);
+                assert_eq!(expect_status as i32, return_wasm.unwrap_or(-1))
+            }
+            ReturnType::FilterHeadersStatus(expect_status) => {
+                assert_eq!(self.function_type, FunctionType::ReturnFilterHeadersStatus);
+                assert_eq!(expect_status as i32, return_wasm.unwrap_or(-1))
+            }
+            ReturnType::FilterMetadataStatus(expect_status) => {
+                assert_eq!(self.function_type, FunctionType::ReturnFilterMetadataStatus);
+                assert_eq!(expect_status as i32, return_wasm.unwrap_or(-1))
+            }
+            ReturnType::FilterTrailersStatus(expect_status) => {
+                assert_eq!(self.function_type, FunctionType::ReturnFilterTrailersStatus);
+                assert_eq!(expect_status as i32, return_wasm.unwrap_or(-1))
+            }
+            ReturnType::FilterDataStatus(expect_status) => {
+                assert_eq!(self.function_type, FunctionType::ReturnFilterDataStatus);
+                assert_eq!(expect_status as i32, return_wasm.unwrap_or(-1))
+            }
+            ReturnType::GrpcStatus(expect_status) => {
+                assert_eq!(self.function_type, FunctionType::ReturnGrpcStatus);
+                assert_eq!(expect_status as i32, return_wasm.unwrap_or(-2))
             }
         }
 
@@ -698,57 +735,7 @@ impl Tester {
     pub fn call_start(&mut self) -> &mut Self {
         println!("[host->vm] _start()");
         self.function_call = FunctionCall::Start();
-        self.function_type = FunctionType::ReturnEmpty;
-        self
-    }
-
-    pub fn call_proxy_on_context_create(
-        &mut self,
-        root_context_id: i32,
-        parent_context_id: i32,
-    ) -> &mut Self {
-        println!(
-            "[host->vm] proxy_on_context_create(root_context_id={}, parent_context_id={})",
-            root_context_id, parent_context_id
-        );
-        self.function_call = FunctionCall::ProxyOnContextCreate(root_context_id, parent_context_id);
-        self.function_type = FunctionType::ReturnEmpty;
-        self
-    }
-
-    pub fn call_proxy_on_done(&mut self, context_id: i32) -> &mut Self {
-        println!("[host->vm] proxy_on_done(context_id={})", context_id);
-        self.function_call = FunctionCall::ProxyOnDone(context_id);
-        self.function_type = FunctionType::ReturnBool;
-        self
-    }
-
-    pub fn call_proxy_on_foreign_function(
-        &mut self,
-        root_context_id: i32,
-        function_id: i32,
-        data_size: i32,
-    ) -> &mut Self {
-        println!("[host->vm] proxy_on_foreign_function(root_context_id={}, function_id={}, data_size={})", 
-            root_context_id, function_id, data_size);
-
-        self.function_call =
-            FunctionCall::ProxyOnForeignFunction(root_context_id, function_id, data_size);
-        self.function_type = FunctionType::ReturnAction;
-        self
-    }
-
-    pub fn call_proxy_on_log(&mut self, context_id: i32) -> &mut Self {
-        println!("[host->vm] proxy_on_log(context_id={})", context_id);
-        self.function_call = FunctionCall::ProxyOnLog(context_id);
-        self.function_type = FunctionType::ReturnEmpty;
-        self
-    }
-
-    pub fn call_proxy_on_delete(&mut self, context_id: i32) -> &mut Self {
-        println!("[host->vm] proxy_on_delete(context_id={})", context_id);
-        self.function_call = FunctionCall::ProxyOnDelete(context_id);
-        self.function_type = FunctionType::ReturnEmpty;
+        self.function_type = FunctionType::ReturnVoid;
         self
     }
 
@@ -762,6 +749,21 @@ impl Tester {
             context_id, vm_configuration_size
         );
         self.function_call = FunctionCall::ProxyOnVmStart(context_id, vm_configuration_size);
+        self.function_type = FunctionType::ReturnBool;
+        self
+    }
+
+    pub fn call_proxy_validate_configuration(
+        &mut self,
+        root_context_id: i32,
+        configuration_size: i32,
+    ) -> &mut Self {
+        println!(
+            "[host->vm] proxy_validate_configuration(root_context_id={}, configuration_size={})",
+            root_context_id, configuration_size
+        );
+        self.function_call =
+            FunctionCall::ProxyValidateConfiguration(root_context_id, configuration_size);
         self.function_type = FunctionType::ReturnBool;
         self
     }
@@ -783,7 +785,22 @@ impl Tester {
     pub fn call_proxy_on_tick(&mut self, context_id: i32) -> &mut Self {
         println!("[host->vm] proxy_on_tick(context_id={})", context_id);
         self.function_call = FunctionCall::ProxyOnTick(context_id);
-        self.function_type = FunctionType::ReturnEmpty;
+        self.function_type = FunctionType::ReturnVoid;
+        self
+    }
+
+    pub fn call_proxy_on_foreign_function(
+        &mut self,
+        root_context_id: i32,
+        function_id: i32,
+        data_size: i32,
+    ) -> &mut Self {
+        println!("[host->vm] proxy_on_foreign_function(root_context_id={}, function_id={}, data_size={})", 
+            root_context_id, function_id, data_size);
+
+        self.function_call =
+            FunctionCall::ProxyOnForeignFunction(root_context_id, function_id, data_size);
+        self.function_type = FunctionType::ReturnAction;
         self
     }
 
@@ -793,7 +810,22 @@ impl Tester {
             context_id, queue_id
         );
         self.function_call = FunctionCall::ProxyOnQueueReady(context_id, queue_id);
-        self.function_type = FunctionType::ReturnEmpty;
+        self.function_type = FunctionType::ReturnVoid;
+        self
+    }
+
+    // Stream calls
+    pub fn call_proxy_on_context_create(
+        &mut self,
+        root_context_id: i32,
+        parent_context_id: i32,
+    ) -> &mut Self {
+        println!(
+            "[host->vm] proxy_on_context_create(root_context_id={}, parent_context_id={})",
+            root_context_id, parent_context_id
+        );
+        self.function_call = FunctionCall::ProxyOnContextCreate(root_context_id, parent_context_id);
+        self.function_type = FunctionType::ReturnVoid;
         self
     }
 
@@ -834,7 +866,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnDownstreamConnectionClose(context_id, peer_type as i32);
-        self.function_type = FunctionType::ReturnEmpty;
+        self.function_type = FunctionType::ReturnVoid;
         self
     }
 
@@ -865,7 +897,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnUpstreamConnectionClose(context_id, peer_type as i32);
-        self.function_type = FunctionType::ReturnEmpty;
+        self.function_type = FunctionType::ReturnVoid;
         self
     }
 
@@ -881,7 +913,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnRequestHeaders(context_id, num_headers, end_of_stream);
-        self.function_type = FunctionType::ReturnAction;
+        self.function_type = FunctionType::ReturnFilterHeadersStatus;
         self
     }
 
@@ -896,7 +928,7 @@ impl Tester {
             context_id, body_size, end_of_stream
         );
         self.function_call = FunctionCall::ProxyOnRequestBody(context_id, body_size, end_of_stream);
-        self.function_type = FunctionType::ReturnAction;
+        self.function_type = FunctionType::ReturnFilterDataStatus;
         self
     }
 
@@ -910,7 +942,17 @@ impl Tester {
             context_id, num_trailers
         );
         self.function_call = FunctionCall::ProxyOnRequestTrailers(context_id, num_trailers);
-        self.function_type = FunctionType::ReturnAction;
+        self.function_type = FunctionType::ReturnFilterTrailersStatus;
+        self
+    }
+
+    pub fn call_proxy_on_request_metadata(&mut self, context_id: i32, nelements: i32) -> &mut Self {
+        println!(
+            "[host->vm] proxy_on_request_metadata(context_id={}, nelements={})",
+            context_id, nelements
+        );
+        self.function_call = FunctionCall::ProxyOnRequestMetadata(context_id, nelements);
+        self.function_type = FunctionType::ReturnFilterMetadataStatus;
         self
     }
 
@@ -926,7 +968,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnResponseHeaders(context_id, num_headers, end_of_stream);
-        self.function_type = FunctionType::ReturnAction;
+        self.function_type = FunctionType::ReturnFilterHeadersStatus;
         self
     }
 
@@ -942,7 +984,7 @@ impl Tester {
         );
         self.function_call =
             FunctionCall::ProxyOnResponseBody(context_id, body_size, end_of_stream);
-        self.function_type = FunctionType::ReturnAction;
+        self.function_type = FunctionType::ReturnFilterDataStatus;
         self
     }
 
@@ -956,10 +998,25 @@ impl Tester {
             context_id, num_trailers
         );
         self.function_call = FunctionCall::ProxyOnResponseTrailers(context_id, num_trailers);
-        self.function_type = FunctionType::ReturnAction;
+        self.function_type = FunctionType::ReturnFilterTrailersStatus;
         self
     }
 
+    pub fn call_proxy_on_response_metadata(
+        &mut self,
+        context_id: i32,
+        nelements: i32,
+    ) -> &mut Self {
+        println!(
+            "[host->vm] call_proxy_on_response_metadata(context_id={}, nelements={})",
+            context_id, nelements
+        );
+        self.function_call = FunctionCall::ProxyOnResponseMetadata(context_id, nelements);
+        self.function_type = FunctionType::ReturnFilterMetadataStatus;
+        self
+    }
+
+    // HTTP/gRPC
     pub fn call_proxy_on_http_call_response(
         &mut self,
         context_id: i32,
@@ -983,7 +1040,87 @@ impl Tester {
             body_size,
             num_trailers,
         );
-        self.function_type = FunctionType::ReturnEmpty;
+        self.function_type = FunctionType::ReturnVoid;
+        self
+    }
+
+    pub fn call_proxy_on_grpc_receive_initial_metadata(
+        &mut self,
+        context_id: i32,
+        token: i32,
+        headers: i32,
+    ) -> &mut Self {
+        println!("[host->vm] proxy_on_grpc_receive_initial_metadata(context_id={}, token={}, headers={})", context_id, token, headers);
+        self.function_call =
+            FunctionCall::ProxyOnGrpcReceiveInitialMetadata(context_id, token, headers);
+        self.function_type = FunctionType::ReturnVoid;
+        self
+    }
+
+    pub fn call_proxy_on_grpc_trailing_metadata(
+        &mut self,
+        context_id: i32,
+        token: i32,
+        trailers: i32,
+    ) -> &mut Self {
+        println!(
+            "[host->vm] proxy_on_grpc_trailing_metadata(context_id={}, token={}, trailers={})",
+            context_id, token, trailers
+        );
+        self.function_call = FunctionCall::ProxyOnGrpcTrailingMetadata(context_id, token, trailers);
+        self.function_type = FunctionType::ReturnVoid;
+        self
+    }
+
+    pub fn call_proxy_on_grpc_receive(
+        &mut self,
+        context_id: i32,
+        token: i32,
+        response_size: i32,
+    ) -> &mut Self {
+        println!(
+            "[host->vm] proxy_on_grpc_receive(context_id={}, token={}, response_size={})",
+            context_id, token, response_size
+        );
+        self.function_call = FunctionCall::ProxyOnGrpcReceive(context_id, token, response_size);
+        self.function_type = FunctionType::ReturnVoid;
+        self
+    }
+
+    pub fn proxy_on_grpc_close(
+        &mut self,
+        context_id: i32,
+        token: i32,
+        status_code: i32,
+    ) -> &mut Self {
+        println!(
+            "[host->vm] proxy_on_grpc_close(context_id={}, token={}, status_code={})",
+            context_id, token, status_code
+        );
+        self.function_call = FunctionCall::ProxyOnGrpcClose(context_id, token, status_code);
+        self.function_type = FunctionType::ReturnVoid;
+        self
+    }
+
+    // The stream/vm has completed
+    pub fn call_proxy_on_done(&mut self, context_id: i32) -> &mut Self {
+        println!("[host->vm] proxy_on_done(context_id={})", context_id);
+        self.function_call = FunctionCall::ProxyOnDone(context_id);
+        self.function_type = FunctionType::ReturnBool;
+        self
+    }
+
+    pub fn call_proxy_on_log(&mut self, context_id: i32) -> &mut Self {
+        println!("[host->vm] proxy_on_log(context_id={})", context_id);
+        self.function_call = FunctionCall::ProxyOnLog(context_id);
+        self.function_type = FunctionType::ReturnVoid;
+        self
+    }
+
+    pub fn call_proxy_on_delete(&mut self, context_id: i32) -> &mut Self {
+        println!("[host->vm] proxy_on_delete(context_id={})", context_id);
+        self.function_call = FunctionCall::ProxyOnDelete(context_id);
+        self.function_type = FunctionType::ReturnVoid;
         self
     }
 

@@ -67,6 +67,7 @@ pub fn generate_import_list(
 
 fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) -> Option<Func> {
     match import.name() {
+        /* ---------------------------------- Logging ---------------------------------- */
         "proxy_log" => {
             Some(Func::wrap(
                 &store,
@@ -118,6 +119,26 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        "proxy_get_log_level" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _level: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_get_log_level() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_get_log_level() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- Timer ---------------------------------- */
         "proxy_set_tick_period_milliseconds" => {
             Some(Func::wrap(
                 &store,
@@ -150,6 +171,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- Time ---------------------------------- */
         "proxy_get_current_time_nanoseconds" => {
             Some(Func::wrap(
                 &store,
@@ -200,6 +222,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- Configuration and Status ---------------------------------- */
         "proxy_get_configuration" => {
             Some(Func::wrap(
                 &store,
@@ -215,6 +238,53 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         get_status()
                     );
                     println!("[vm<-host] proxy_get_configuration() -> (return_buffer_data, return_buffer_size) return: {:?}", Status::InternalFailure);
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_get_status" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _status_code_ptr: i32,
+                 _message_ptr: i32,
+                 _message_size: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_get_status() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_get_status() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- Buffer ---------------------------------- */
+        "proxy_get_buffer_status" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _buffer_type: i32,
+                 _length_ptr: i32,
+                 _flags_ptr: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_get_buffer_status() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_get_buffer_status() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
                     return Status::InternalFailure as i32;
                 },
             ))
@@ -376,6 +446,26 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     assert_ne!(get_status(), ExpectStatus::Failed);
                     set_status(ExpectStatus::Unexpected);
                     return Status::Ok as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- Headers/Trailers/Metadata Maps ---------------------------------- */
+        "proxy_get_header_map_size" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _map_type: i32, _map_size: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_get_header_map_size() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_get_header_map_size() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
                 },
             ))
         }
@@ -792,6 +882,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- State Accessors ---------------------------------- */
         "proxy_get_property" => {
             Some(Func::wrap(
                 &store,
@@ -834,6 +925,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- SharedData ---------------------------------- */
         "proxy_get_shared_data" => {
             Some(Func::wrap(
                 &store,
@@ -875,6 +967,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- SharedQueue ---------------------------------- */
         "proxy_register_shared_queue" => {
             Some(Func::wrap(
                 &store,
@@ -949,6 +1042,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- Continue/Close/Reply/Route ---------------------------------- */
         "proxy_continue_stream" => {
             Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
                 // Default Function:
@@ -1123,6 +1217,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             }))
         }
 
+        /* ---------------------------------- HTTP ---------------------------------- */
         "proxy_http_call" => {
             Some(Func::wrap(
                 &store,
@@ -1234,6 +1329,196 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- gRPC ---------------------------------- */
+        "proxy_grpc_call" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _service_ptr: i32,
+                 _service_size: i32,
+                 _service_name_ptr: i32,
+                 _service_name_size: i32,
+                 _method_name_ptr: i32,
+                 _method_name_size: i32,
+                 _initial_metadata_ptr: i32,
+                 _initial_metadata_size: i32,
+                 _request_ptr: i32,
+                 _request_size: i32,
+                 _timeout_milliseconds: i32,
+                 _token_ptr: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_call() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_call() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_grpc_stream" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _service_ptr: i32,
+                 _service_size: i32,
+                 _service_name_ptr: i32,
+                 _service_name_size: i32,
+                 _method_name_ptr: i32,
+                 _method_name_size: i32,
+                 _initial_metadata: i32,
+                 _initial_metadata_size: i32,
+                 _token_ptr: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_stream() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_stream() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_grpc_cancel" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _token: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_cancel() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_cancel() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_grpc_close" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _token: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_close() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_close() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_grpc_send" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _token: i32,
+                 _message_ptr: i32,
+                 _message_size: i32,
+                 _end_of_stream: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_send() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_send() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- Metrics ---------------------------------- */
+        "proxy_define_metric" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_define_metric() -> (...) status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_define_metric() -> (..) return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        "proxy_increment_metric" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_increment_metric() -> (...) status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_increment_metric() -> (..) return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        "proxy_record_metric" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_record_metric() -> (...) status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_record_metric() -> (..) return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        "proxy_get_metric" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_get_metric() -> (...) status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_get_metric() -> (..) return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        /* ---------------------------------- System ---------------------------------- */
         "proxy_set_effective_context" => {
             Some(Func::wrap(
                 &store,
@@ -1268,6 +1553,28 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                 return Status::InternalFailure as i32;
             }))
         }
+
+        "proxy_call_foreign_function" => Some(Func::wrap(
+            &store,
+            |_caller: Caller<'_>,
+             _function_name: i32,
+             _function_name_size: i32,
+             _arguments: i32,
+             _arguments_size: i32,
+             _results: i32,
+             _size_t: i32|
+             -> i32 {
+                println!(
+                    "[vm->host] proxy_call_foreign_function() status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm->host] proxy_call_foreign_function() return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            },
+        )),
 
         _ => None,
     }

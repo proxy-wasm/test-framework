@@ -49,7 +49,9 @@ fn main() -> Result<()> {
             Some(5 * 10u64.pow(3)),
         )
         .returning(Some(0))
-        .execute_and_expect(ReturnType::Action(Action::Pause))?;
+        .execute_and_expect(ReturnType::FilterHeadersStatus(
+            FilterHeadersStatus::StopIteration,
+        ))?;
 
     let buffer_data = "custom_developer_body";
     http_auth_random
@@ -71,7 +73,9 @@ fn main() -> Result<()> {
             Some("Powered-By"),
             Some("proxy-wasm"),
         )
-        .execute_and_expect(ReturnType::Action(Action::Continue))?;
+        .execute_and_expect(ReturnType::FilterHeadersStatus(
+            FilterHeadersStatus::Continue,
+        ))?;
 
     return Ok(());
 }
