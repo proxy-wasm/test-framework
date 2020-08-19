@@ -45,7 +45,7 @@ pub struct HostSettings {
     abi_version: AbiVersion,
     quiet: bool,
     tick_period_millis: Duration,
-    header_map_pairs: HashMap<i32, HashMap<String, String>>,
+    header_map_pairs: HashMap<i32, Vec<(String, String)>>,
     buffer_bytes: HashMap<i32, Bytes>,
 }
 
@@ -107,9 +107,9 @@ impl HostSettings {
     }
 
     pub fn set_header_map_pairs(&mut self, map_type: i32, header_map_pairs: Vec<(&str, &str)>) {
-        let mut header_map = HashMap::new();
+        let mut header_map = Vec::new();
         for (header_map_key, header_map_value) in header_map_pairs.into_iter() {
-            header_map.insert(header_map_key.to_string(), header_map_value.to_string());
+            header_map.push((header_map_key.to_string(), header_map_value.to_string()));
         }
         self.header_map_pairs.insert(map_type, header_map);
     }
@@ -124,9 +124,14 @@ impl HostSettings {
     }
 
     pub fn get_header_map_value(&self, map_type: i32, header_map_key: &str) -> Option<String> {
+        let mut header_map_value: Option<String> = None;
         let header_map = self.header_map_pairs.get(&map_type).unwrap();
-        let header_map_value = header_map.get(header_map_key);
-        header_map_value.map(|str_val| str_val.to_string())
+        for (key, value) in header_map {
+            if key == header_map_key {
+                header_map_value = Some(value.to_string());
+            }
+        }
+        header_map_value
     }
 
     pub fn replace_header_map_value(
@@ -135,13 +140,27 @@ impl HostSettings {
         header_map_key: &str,
         header_map_value: &str,
     ) {
-        let header_map = self.header_map_pairs.get_mut(&map_type).unwrap();
-        header_map.insert(header_map_key.to_string(), header_map_value.to_string());
+        let mut new_header_map: Vec<(String, String)> = Vec::new();
+        let header_map = self.header_map_pairs.get(&map_type).unwrap();
+        for (key, value) in header_map {
+            if key != header_map_key {
+                new_header_map.push((key.to_string(), value.to_string()));
+            } else {
+                new_header_map.push((key.to_string(), header_map_value.to_string()));
+            }
+        }
+        self.header_map_pairs.insert(map_type, new_header_map);
     }
 
     pub fn remove_header_map_value(&mut self, map_type: i32, header_map_key: &str) {
-        let header_map = self.header_map_pairs.get_mut(&map_type).unwrap();
-        header_map.remove(header_map_key);
+        let mut new_header_map: Vec<(String, String)> = Vec::new();
+        let header_map = self.header_map_pairs.get(&map_type).unwrap();
+        for (key, value) in header_map {
+            if key != header_map_key {
+                new_header_map.push((key.to_string(), value.to_string()));
+            }
+        }
+        self.header_map_pairs.insert(map_type, new_header_map);
     }
 
     pub fn add_header_map_value(
@@ -150,79 +169,91 @@ impl HostSettings {
         header_map_key: &str,
         header_map_value: &str,
     ) {
-        let header_map = self.header_map_pairs.get_mut(&map_type).unwrap();
-        header_map.insert(header_map_key.to_string(), header_map_value.to_string());
+        let mut key_found = false;
+        let mut new_header_map: Vec<(String, String)> = Vec::new();
+        let header_map = self.header_map_pairs.get(&map_type).unwrap();
+        for (key, value) in header_map {
+            if key != header_map_key {
+                new_header_map.push((key.to_string(), value.to_string()));
+            } else {
+                key_found = true;
+            }
+        }
+        if !key_found {
+            new_header_map.push((header_map_key.to_string(), header_map_value.to_string()));
+        }
+        self.header_map_pairs.insert(map_type, new_header_map);
     }
 }
 
 // functions to retrieve default values
-pub fn default_header_map_pairs() -> HashMap<i32, HashMap<String, String>> {
+pub fn default_header_map_pairs() -> HashMap<i32, Vec<(String, String)>> {
     let mut default_header_maps = HashMap::new();
 
-    let mut http_on_request_headers = HashMap::new();
-    http_on_request_headers.insert(":method".to_string(), "GET".to_string());
-    http_on_request_headers.insert(
+    let mut http_on_request_headers = Vec::new();
+    http_on_request_headers.push((":method".to_string(), "GET".to_string()));
+    http_on_request_headers.push((
         ":path".to_string(),
         "/default/request/headers/path".to_string(),
-    );
-    http_on_request_headers.insert(":authority".to_string(), "abi_test_harness".to_string());
+    ));
+    http_on_request_headers.push((":authority".to_string(), "abi_test_harness".to_string()));
     default_header_maps.insert(MapType::HttpRequestHeaders as i32, http_on_request_headers);
 
-    let mut http_on_request_trailers = HashMap::new();
-    http_on_request_trailers.insert(":method".to_string(), "GET".to_string());
-    http_on_request_trailers.insert(
+    let mut http_on_request_trailers = Vec::new();
+    http_on_request_trailers.push((":method".to_string(), "GET".to_string()));
+    http_on_request_trailers.push((
         ":path".to_string(),
         "/default/request/trailers/path".to_string(),
-    );
-    http_on_request_trailers.insert(":authority".to_string(), "abi_test_harness".to_string());
+    ));
+    http_on_request_trailers.push((":authority".to_string(), "abi_test_harness".to_string()));
     default_header_maps.insert(
         MapType::HttpRequestTrailers as i32,
         http_on_request_trailers,
     );
 
-    let mut http_on_response_headers = HashMap::new();
-    http_on_response_headers.insert(":method".to_string(), "GET".to_string());
-    http_on_response_headers.insert(
+    let mut http_on_response_headers = Vec::new();
+    http_on_response_headers.push((":method".to_string(), "GET".to_string()));
+    http_on_response_headers.push((
         ":path".to_string(),
         "/default/response/headers/path".to_string(),
-    );
-    http_on_response_headers.insert(":authority".to_string(), "abi_test_harness".to_string());
+    ));
+    http_on_response_headers.push((":authority".to_string(), "abi_test_harness".to_string()));
     default_header_maps.insert(
         MapType::HttpResponseHeaders as i32,
         http_on_response_headers,
     );
 
-    let mut http_on_response_trailers = HashMap::new();
-    http_on_response_trailers.insert(":method".to_string(), "GET".to_string());
-    http_on_response_trailers.insert(
+    let mut http_on_response_trailers = Vec::new();
+    http_on_response_trailers.push((":method".to_string(), "GET".to_string()));
+    http_on_response_trailers.push((
         ":path".to_string(),
         "/default/response/trailers/path".to_string(),
-    );
-    http_on_response_trailers.insert(":authority".to_string(), "abi_test_harness".to_string());
+    ));
+    http_on_response_trailers.push((":authority".to_string(), "abi_test_harness".to_string()));
     default_header_maps.insert(
         MapType::HttpResponseTrailers as i32,
         http_on_response_trailers,
     );
 
-    let mut http_call_response_headers = HashMap::new();
-    http_call_response_headers.insert(":method".to_string(), "GET".to_string());
-    http_call_response_headers.insert(
+    let mut http_call_response_headers = Vec::new();
+    http_call_response_headers.push((":method".to_string(), "GET".to_string()));
+    http_call_response_headers.push((
         ":path".to_string(),
         "/default/call/response/headers/path".to_string(),
-    );
-    http_call_response_headers.insert(":authority".to_string(), "abi_test_harness".to_string());
+    ));
+    http_call_response_headers.push((":authority".to_string(), "abi_test_harness".to_string()));
     default_header_maps.insert(
         MapType::HttpCallResponseHeaders as i32,
         http_call_response_headers,
     );
 
-    let mut http_call_response_trailers = HashMap::new();
-    http_call_response_trailers.insert(":method".to_string(), "GET".to_string());
-    http_call_response_trailers.insert(
+    let mut http_call_response_trailers = Vec::new();
+    http_call_response_trailers.push((":method".to_string(), "GET".to_string()));
+    http_call_response_trailers.push((
         ":path".to_string(),
         "/default/call/response/trailers/path".to_string(),
-    );
-    http_call_response_trailers.insert(":authority".to_string(), "abi_test_harness".to_string());
+    ));
+    http_call_response_trailers.push((":authority".to_string(), "abi_test_harness".to_string()));
     default_header_maps.insert(
         MapType::HttpCallResponseTrailers as i32,
         http_call_response_trailers,

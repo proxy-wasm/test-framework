@@ -92,10 +92,10 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             Some(Func::wrap(
                 &store,
                 |_caller: Caller<'_>,
-                _status_code_ptr: i32,
-                _message_ptr: i32,
-                _message_size: i32|
-                -> i32 {
+                 _status_code_ptr: i32,
+                 _message_ptr: i32,
+                 _message_size: i32|
+                 -> i32 {
                     // Default Function:
                     // Expectation:
                     println!(
