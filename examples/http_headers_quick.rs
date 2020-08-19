@@ -22,29 +22,21 @@ fn main() -> Result<()> {
     let mut http_headers_test = tester::mock(args)?;
 
     http_headers_test
-        .call_start()
-        .execute_and_expect(vec![ReturnType::None])?;
-
-    let root_context = 1;
-    http_headers_test
-        .call_proxy_on_context_create(root_context, 0)
-        .execute_and_expect(vec![ReturnType::None])?;
-
-    let http_context = 2;
-    http_headers_test
-        .call_proxy_on_context_create(http_context, root_context)
-        .execute_and_expect(vec![ReturnType::None])?;
-
-    http_headers_test
-        .call_proxy_on_request_headers(http_context, 0, 0)
-        .expect_get_header_map_pairs(Some(MapType::HttpRequestHeaders))
-        .returning(Some(vec![
-            (":method", "GET"),
-            (":path", "/hello"),
-            (":authority", "developer"),
-        ]))
-        .expect_get_header_map_value(Some(MapType::HttpRequestHeaders), Some(":path"))
-        .returning(Some("/hello"))
+        .http_request(
+            Some((
+                MapType::HttpRequestHeaders,
+                vec![
+                    (":method", "GET"),
+                    (":path", "/hello"),
+                    (":authority", "developer"),
+                ],
+            )),
+            None,
+            None,
+        )?
+        .expect_log(Some(LogLevel::Trace), Some("#2 -> :method: GET"))
+        .expect_log(Some(LogLevel::Trace), Some("#2 -> :path: /hello"))
+        .expect_log(Some(LogLevel::Trace), Some("#2 -> :authority: developer"))
         .expect_send_local_response(
             Some(200),
             Some("Hello, World!\n"),
@@ -53,6 +45,7 @@ fn main() -> Result<()> {
         )
         .execute_and_expect(vec![ReturnType::Action(Action::Pause)])?;
 
+    let http_context = 2;
     http_headers_test
         .call_proxy_on_response_headers(http_context, 0, 0)
         .expect_get_header_map_pairs(Some(MapType::HttpResponseHeaders))

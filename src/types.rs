@@ -30,45 +30,6 @@ pub enum Action {
     Pause = 1,
 }
 
-#[repr(u32)]
-#[derive(Debug, Clone, Copy)]
-pub enum FilterStatus {
-    Continue = 0,
-    StopIteration = 1,
-}
-
-#[repr(u32)]
-#[derive(Debug, Clone, Copy)]
-pub enum FilterHeadersStatus {
-    Continue = 0,
-    StopIteration = 1,
-    ContinueAndEndStream = 2,
-    StopAllIterationAndBuffer = 3,
-    StopAllIterationAndWatermark = 4,
-}
-
-#[repr(u32)]
-#[derive(Debug, Clone, Copy)]
-pub enum FilterMetadataStatus {
-    Continue = 0,
-}
-
-#[repr(u32)]
-#[derive(Debug, Clone, Copy)]
-pub enum FilterTrailersStatus {
-    Continue = 0,
-    StopIteration = 1,
-}
-
-#[repr(u32)]
-#[derive(Debug, Clone, Copy)]
-pub enum FilterDataStatus {
-    Continue = 0,
-    StopIterationAndBuffer = 1,
-    StopIterationAndWatermark = 2,
-    StopIterationNoBuffer = 3,
-}
-
 #[repr(i32)]
 #[derive(Debug, Clone, Copy)]
 pub enum GrpcStatus {
@@ -153,12 +114,6 @@ pub enum ReturnType {
     None,
     Bool(bool),
     Action(Action),
-    FilterStatus(FilterStatus),
-    FilterHeadersStatus(FilterHeadersStatus),
-    FilterMetadataStatus(FilterMetadataStatus),
-    FilterTrailersStatus(FilterTrailersStatus),
-    FilterDataStatus(FilterDataStatus),
-    GrpcStatus(GrpcStatus),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

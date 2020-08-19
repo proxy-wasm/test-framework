@@ -23,17 +23,17 @@ fn main() -> Result<()> {
 
     http_auth_random
         .call_start()
-        .execute_and_expect(ReturnType::None)?;
+        .execute_and_expect(vec![ReturnType::None])?;
 
     let root_context = 1;
     http_auth_random
         .call_proxy_on_context_create(root_context, 0)
-        .execute_and_expect(ReturnType::None)?;
+        .execute_and_expect(vec![ReturnType::None])?;
 
     let http_context = 2;
     http_auth_random
         .call_proxy_on_context_create(http_context, root_context)
-        .execute_and_expect(ReturnType::None)?;
+        .execute_and_expect(vec![ReturnType::None])?;
 
     http_auth_random
         .call_proxy_on_request_headers(http_context, 0, 0)
@@ -49,9 +49,7 @@ fn main() -> Result<()> {
             Some(5 * 10u64.pow(3)),
         )
         .returning(Some(0))
-        .execute_and_expect(ReturnType::FilterHeadersStatus(
-            FilterHeadersStatus::StopIteration,
-        ))?;
+        .execute_and_expect(vec![ReturnType::Action(Action::Pause)])?;
 
     let buffer_data = "custom_developer_body";
     http_auth_random
@@ -64,7 +62,7 @@ fn main() -> Result<()> {
             Some(vec![("Powered-By", "proxy-wasm")]),
             Some(-1),
         )
-        .execute_and_expect(ReturnType::None)?;
+        .execute_and_expect(vec![ReturnType::None])?;
 
     http_auth_random
         .call_proxy_on_response_headers(http_context, 0, 0)
@@ -73,9 +71,7 @@ fn main() -> Result<()> {
             Some("Powered-By"),
             Some("proxy-wasm"),
         )
-        .execute_and_expect(ReturnType::FilterHeadersStatus(
-            FilterHeadersStatus::Continue,
-        ))?;
+        .execute_and_expect(vec![ReturnType::Action(Action::Continue)])?;
 
     return Ok(());
 }
