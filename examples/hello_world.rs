@@ -23,29 +23,29 @@ fn main() -> Result<()> {
 
     hello_world_test
         .call_start()
-        .execute_and_expect(vec![ReturnType::None])?;
+        .execute_and_expect(ReturnType::None)?;
 
     let root_context = 1;
     hello_world_test
         .call_proxy_on_context_create(root_context, 0)
-        .execute_and_expect(vec![ReturnType::None])?;
+        .execute_and_expect(ReturnType::None)?;
 
     hello_world_test
         .call_proxy_on_vm_start(root_context, 0)
         .expect_log(Some(LogLevel::Info), Some("Hello, World!"))
         .expect_set_tick_period_millis(Some(5 * 10u64.pow(3)))
-        .execute_and_expect(vec![ReturnType::Bool(true)])?;
+        .execute_and_expect(ReturnType::Bool(true))?;
 
     hello_world_test
         .call_proxy_on_tick(root_context)
         .expect_get_current_time_nanos()
         .returning(Some(0 * 10u64.pow(9)))
         .expect_log(Some(LogLevel::Info), Some("It's 1970-01-01 00:00:00 UTC"))
-        .execute_and_expect(vec![ReturnType::None])?;
+        .execute_and_expect(ReturnType::None)?;
 
     hello_world_test
         .call_proxy_on_tick(root_context)
-        .execute_and_expect(vec![ReturnType::None])?;
+        .execute_and_expect(ReturnType::None)?;
 
     return Ok(());
 }

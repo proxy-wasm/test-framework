@@ -43,7 +43,7 @@ fn main() -> Result<()> {
             Some(vec![("Hello", "World"), ("Powered-By", "proxy-wasm")]),
             Some(-1),
         )
-        .execute_and_expect(vec![ReturnType::Action(Action::Pause)])?;
+        .execute_and_expect_n(vec![ReturnType::Action(Action::Pause)])?;
 
     let http_context = 2;
     http_headers_test
@@ -52,12 +52,12 @@ fn main() -> Result<()> {
         .returning(Some(vec![(":status", "200"), ("Powered-By", "proxy-wasm")]))
         .expect_log(Some(LogLevel::Trace), Some("#2 <- :status: 200"))
         .expect_log(Some(LogLevel::Trace), Some("#2 <- Powered-By: proxy-wasm"))
-        .execute_and_expect(vec![ReturnType::Action(Action::Continue)])?;
+        .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
     http_headers_test
         .call_proxy_on_log(http_context)
         .expect_log(Some(LogLevel::Trace), Some("#2 completed."))
-        .execute_and_expect(vec![ReturnType::None])?;
+        .execute_and_expect(ReturnType::None)?;
 
     return Ok(());
 }
