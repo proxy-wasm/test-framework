@@ -86,7 +86,7 @@ enum FunctionCall {
     ProxyOnResponseMetadata(i32, i32),
     ProxyOnHttpCallResponse(i32, i32, i32, i32, i32),
     ProxyOnGrpcReceiveInitialMetadata(i32, i32, i32),
-    ProxyOnGrpcTrailingMetadata(i32, i32, i32),
+    ProxyOnGrpcReceiveTrailingMetadata(i32, i32, i32),
     ProxyOnGrpcReceive(i32, i32, i32),
     ProxyOnGrpcClose(i32, i32, i32),
     ProxyOnDone(i32),
@@ -713,10 +713,10 @@ impl Tester {
                     proxy_on_grpc_receive_initial_metadata(context_id, token, headers)?;
                 }
 
-                FunctionCall::ProxyOnGrpcTrailingMetadata(context_id, token, trailers) => {
+                FunctionCall::ProxyOnGrpcReceiveTrailingMetadata(context_id, token, trailers) => {
                     let proxy_on_grpc_trailing_metadata = self
                         .instance
-                        .get_func("proxy_on_grpc_trailing_metadata")
+                        .get_func("proxy_on_grpc_receive_trailing_metadata")
                         .ok_or(anyhow::format_err!(
                             "Error: failed to find 'proxy_on_grpc_trailing_metadata' function export"
                         ))?
@@ -1190,18 +1190,18 @@ impl Tester {
         self
     }
 
-    pub fn call_proxy_on_grpc_trailing_metadata(
+    pub fn call_proxy_on_grpc_receive_trailing_metadata(
         &mut self,
         context_id: i32,
         token: i32,
         trailers: i32,
     ) -> &mut Self {
         println!(
-            "[host->vm] proxy_on_grpc_trailing_metadata(context_id={}, token={}, trailers={})",
+            "[host->vm] proxy_on_grpc_receive_trailing_metadata(context_id={}, token={}, trailers={})",
             context_id, token, trailers
         );
         self.function_call
-            .push(FunctionCall::ProxyOnGrpcTrailingMetadata(
+            .push(FunctionCall::ProxyOnGrpcReceiveTrailingMetadata(
                 context_id, token, trailers,
             ));
         self.function_type.push(FunctionType::ReturnVoid);
