@@ -1277,15 +1277,6 @@ impl Tester {
         body: Option<(BufferType, &str)>,
         trailers: Option<(MapType, Vec<(&str, &str)>)>,
     ) -> Result<&mut Self> {
-        // self.call_start()
-        //     .execute_and_expect(vec![])?;
-        // let root_context = 1;
-        // self.call_proxy_on_context_create(root_context, 0)
-        //     .execute_and_expect(vec![ReturnType::None])?;
-        // let http_context = 2;
-        // self.call_proxy_on_context_create(http_context, root_context)
-        //     .execute_and_expect(vec![ReturnType::None])?;
-
         let root_context = 1;
         let http_context = 2;
         self.call_start()
