@@ -77,11 +77,18 @@ pub enum ReturnType {
     Action(Action),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AbiVersion {
-    None,
+    UnknownAbiVersion,
     ProxyAbiVersion0_1_0,
     ProxyAbiVersion0_2_0,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ExpectStatus {
+    Expected,
+    Failed,
+    Unexpected,
 }
 
 pub type Bytes = Vec<u8>;

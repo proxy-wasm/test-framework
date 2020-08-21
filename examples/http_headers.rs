@@ -13,14 +13,13 @@
 // limitations under the License.
 
 use anyhow::Result;
-use proxy_wasm_test_framework::{tester, types::*};
-use std::env;
+use proxy_wasm_test_framework::tester;
+use proxy_wasm_test_framework::types::*;
+use structopt::StructOpt;
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
-    assert_eq!(args.len(), 2);
-    let http_headers_path = &args[1];
-    let mut http_headers_test = tester::test(http_headers_path)?;
+    let args = tester::MockSettings::from_args();
+    let mut http_headers_test = tester::mock(args)?;
 
     http_headers_test
         .call_start()
@@ -37,34 +36,34 @@ fn main() -> Result<()> {
         .execute_and_expect(ReturnType::None)?;
 
     http_headers_test
-        .call_proxy_on_request_headers(http_context, 0)
-        .expect_get_header_map_pairs(MapType::HttpRequestHeaders)
-        .returning(vec![
+        .call_proxy_on_request_headers(http_context, 0, false)
+        .expect_get_header_map_pairs(Some(MapType::HttpRequestHeaders))
+        .returning(Some(vec![
             (":method", "GET"),
             (":path", "/hello"),
             (":authority", "developer"),
-        ])
-        .expect_get_header_map_value(MapType::HttpRequestHeaders, ":path")
-        .returning("/hello")
+        ]))
+        .expect_get_header_map_value(Some(MapType::HttpRequestHeaders), Some(":path"))
+        .returning(Some("/hello"))
         .expect_send_local_response(
-            200,
+            Some(200),
             Some("Hello, World!\n"),
-            vec![("Hello", "World"), ("Powered-By", "proxy-wasm")],
-            -1,
+            Some(vec![("Hello", "World"), ("Powered-By", "proxy-wasm")]),
+            Some(-1),
         )
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
     http_headers_test
-        .call_proxy_on_response_headers(http_context, 0)
-        .expect_get_header_map_pairs(MapType::HttpResponseHeaders)
-        .returning(vec![(":status", "200"), ("Powered-By", "proxy-wasm")])
-        .expect_log(LogLevel::Trace, "#2 <- :status: 200")
-        .expect_log(LogLevel::Trace, "#2 <- Powered-By: proxy-wasm")
+        .call_proxy_on_response_headers(http_context, 0, false)
+        .expect_get_header_map_pairs(Some(MapType::HttpResponseHeaders))
+        .returning(Some(vec![(":status", "200"), ("Powered-By", "proxy-wasm")]))
+        .expect_log(Some(LogLevel::Trace), Some("#2 <- :status: 200"))
+        .expect_log(Some(LogLevel::Trace), Some("#2 <- Powered-By: proxy-wasm"))
         .execute_and_expect(ReturnType::Action(Action::Continue))?;
 
     http_headers_test
         .call_proxy_on_log(http_context)
-        .expect_log(LogLevel::Trace, "#2 completed.")
+        .expect_log(Some(LogLevel::Trace), Some("#2 completed."))
         .execute_and_expect(ReturnType::None)?;
 
     return Ok(());

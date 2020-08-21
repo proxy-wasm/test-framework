@@ -26,12 +26,12 @@ pub struct HostHandle {
 impl HostHandle {
     pub fn new() -> HostHandle {
         HostHandle {
-            staged: HostSettings::new(AbiVersion::None),
+            staged: HostSettings::new(AbiVersion::UnknownAbiVersion, false),
         }
     }
 
-    pub fn reset(&mut self, abi_version: AbiVersion) {
-        self.staged = HostSettings::new(abi_version);
+    pub fn reset(&mut self, abi_version: AbiVersion, quiet: bool) {
+        self.staged = HostSettings::new(abi_version, quiet);
     }
 
     pub fn print_staged(&self) {
@@ -43,15 +43,17 @@ impl HostHandle {
 #[derive(Debug)]
 pub struct HostSettings {
     abi_version: AbiVersion,
+    quiet: bool,
     tick_period_millis: Duration,
     header_map_pairs: HashMap<i32, HashMap<String, String>>,
     buffer_bytes: HashMap<i32, Bytes>,
 }
 
 impl HostSettings {
-    pub fn new(abi_version: AbiVersion) -> HostSettings {
+    pub fn new(abi_version: AbiVersion, quiet: bool) -> HostSettings {
         HostSettings {
             abi_version: abi_version,
+            quiet: quiet,
             tick_period_millis: Duration::new(0, 0),
             header_map_pairs: default_header_map_pairs(),
             buffer_bytes: default_buffer_bytes(),
@@ -64,6 +66,14 @@ impl HostSettings {
 
     pub fn get_abi_version(&mut self) -> AbiVersion {
         self.abi_version
+    }
+
+    pub fn set_quiet_mode(&mut self, quiet: bool) {
+        self.quiet = quiet;
+    }
+
+    pub fn get_quiet_mode(&mut self) -> bool {
+        self.quiet
     }
 
     pub fn reset_tick_period_millis(&mut self) {

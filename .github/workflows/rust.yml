@@ -180,10 +180,10 @@ jobs:
       run: target/release/examples/hello_world proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/hello_world.wasm
 
     - name: Test (http_auth_random)
-      run: target/release/examples/http_auth_random proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_auth_random.wasm
+      run: target/release/examples/http_auth_random proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_auth_random.wasm -a
 
     - name: Test (http_headers)
-      run: target/release/examples/http_headers proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_headers.wasm
+      run: target/release/examples/http_headers proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_headers.wasm -a
 
   outdated:
     runs-on: ubuntu-latest

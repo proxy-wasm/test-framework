@@ -16,8 +16,9 @@ use crate::tester::Tester;
 
 // As of now, the following expectations do not require "fn returning()" implementations and hence
 // no structure is provided for them. Setting of these expectations are built directly into tester.rs:
-// proxy_log(), proxy_set_tick_period_millis(), proxy_set_buffer_bytes(), proxy_replace_header_map_value(),
-// proxy_remove_header_map_value(), proxy_add_header_map_value(), proxy_send_local_response(), etc.
+// proxy_log(), proxy_set_tick_period_millis(), proxy_set_buffer_bytes(), proxy_set_header_map_pairs,
+// proxy_replace_header_map_value(), proxy_remove_header_map_value(), proxy_add_header_map_value(),
+// proxy_send_local_response(), etc.
 
 pub struct ExpectGetCurrentTimeNanos<'a> {
     tester: &'a mut Tester,
@@ -28,7 +29,7 @@ impl<'a> ExpectGetCurrentTimeNanos<'a> {
         ExpectGetCurrentTimeNanos { tester: tester }
     }
 
-    pub fn returning(&mut self, current_time_nanos: u64) -> &mut Tester {
+    pub fn returning(&mut self, current_time_nanos: Option<u64>) -> &mut Tester {
         self.tester
             .get_expect_handle()
             .staged
@@ -39,18 +40,18 @@ impl<'a> ExpectGetCurrentTimeNanos<'a> {
 
 pub struct ExpectGetBufferBytes<'a> {
     tester: &'a mut Tester,
-    buffer_type: i32,
+    buffer_type: Option<i32>,
 }
 
 impl<'a> ExpectGetBufferBytes<'a> {
-    pub fn expecting(tester: &'a mut Tester, buffer_type: i32) -> ExpectGetBufferBytes {
+    pub fn expecting(tester: &'a mut Tester, buffer_type: Option<i32>) -> ExpectGetBufferBytes {
         ExpectGetBufferBytes {
             tester: tester,
             buffer_type: buffer_type,
         }
     }
 
-    pub fn returning(&mut self, buffer_data: &str) -> &mut Tester {
+    pub fn returning(&mut self, buffer_data: Option<&str>) -> &mut Tester {
         self.tester
             .get_expect_handle()
             .staged
@@ -61,18 +62,18 @@ impl<'a> ExpectGetBufferBytes<'a> {
 
 pub struct ExpectGetHeaderMapPairs<'a> {
     tester: &'a mut Tester,
-    map_type: i32,
+    map_type: Option<i32>,
 }
 
 impl<'a> ExpectGetHeaderMapPairs<'a> {
-    pub fn expecting(tester: &'a mut Tester, map_type: i32) -> ExpectGetHeaderMapPairs {
+    pub fn expecting(tester: &'a mut Tester, map_type: Option<i32>) -> ExpectGetHeaderMapPairs {
         ExpectGetHeaderMapPairs {
             tester: tester,
             map_type: map_type,
         }
     }
 
-    pub fn returning(&mut self, header_map_pairs: Vec<(&str, &str)>) -> &mut Tester {
+    pub fn returning(&mut self, header_map_pairs: Option<Vec<(&str, &str)>>) -> &mut Tester {
         self.tester
             .get_expect_handle()
             .staged
@@ -81,39 +82,17 @@ impl<'a> ExpectGetHeaderMapPairs<'a> {
     }
 }
 
-pub struct ExpectSetHeaderMapPairs<'a> {
-    tester: &'a mut Tester,
-    map_type: i32,
-}
-
-impl<'a> ExpectSetHeaderMapPairs<'a> {
-    pub fn expecting(tester: &'a mut Tester, map_type: i32) -> ExpectSetHeaderMapPairs {
-        ExpectSetHeaderMapPairs {
-            tester: tester,
-            map_type: map_type,
-        }
-    }
-
-    pub fn returning(&mut self, header_map_pairs: Vec<(&str, &str)>) -> &mut Tester {
-        self.tester
-            .get_expect_handle()
-            .staged
-            .set_expect_set_header_map_pairs(self.map_type, header_map_pairs);
-        self.tester
-    }
-}
-
 pub struct ExpectGetHeaderMapValue<'a> {
     tester: &'a mut Tester,
-    map_type: i32,
-    header_map_key: &'static str,
+    map_type: Option<i32>,
+    header_map_key: Option<&'static str>,
 }
 
 impl<'a> ExpectGetHeaderMapValue<'a> {
     pub fn expecting(
         tester: &'a mut Tester,
-        map_type: i32,
-        header_map_key: &'static str,
+        map_type: Option<i32>,
+        header_map_key: Option<&'static str>,
     ) -> ExpectGetHeaderMapValue<'a> {
         ExpectGetHeaderMapValue {
             tester: tester,
@@ -122,7 +101,7 @@ impl<'a> ExpectGetHeaderMapValue<'a> {
         }
     }
 
-    pub fn returning(&mut self, header_map_value: &str) -> &mut Tester {
+    pub fn returning(&mut self, header_map_value: Option<&str>) -> &mut Tester {
         self.tester
             .get_expect_handle()
             .staged
@@ -133,21 +112,21 @@ impl<'a> ExpectGetHeaderMapValue<'a> {
 
 pub struct ExpectHttpCall<'a> {
     tester: &'a mut Tester,
-    upstream: &'a str,
-    headers: Option<Vec<(&'a str, &'a str)>>,
+    upstream: Option<&'a str>,
+    headers: Option<Option<Vec<(&'a str, &'a str)>>>,
     body: Option<&'a str>,
-    trailers: Option<Vec<(&'a str, &'a str)>>,
-    timeout: u64,
+    trailers: Option<Option<Vec<(&'a str, &'a str)>>>,
+    timeout: Option<u64>,
 }
 
 impl<'a> ExpectHttpCall<'a> {
     pub fn expecting(
         tester: &'a mut Tester,
-        upstream: &'a str,
-        headers: Vec<(&'a str, &'a str)>,
+        upstream: Option<&'a str>,
+        headers: Option<Vec<(&'a str, &'a str)>>,
         body: Option<&'a str>,
-        trailers: Vec<(&'a str, &'a str)>,
-        timeout: u64,
+        trailers: Option<Vec<(&'a str, &'a str)>>,
+        timeout: Option<u64>,
     ) -> ExpectHttpCall<'a> {
         ExpectHttpCall {
             tester: tester,
@@ -159,7 +138,7 @@ impl<'a> ExpectHttpCall<'a> {
         }
     }
 
-    pub fn returning(&mut self, token_id: u32) -> &mut Tester {
+    pub fn returning(&mut self, token_id: Option<u32>) -> &mut Tester {
         self.tester.get_expect_handle().staged.set_expect_http_call(
             self.upstream,
             self.headers.take().unwrap(),

@@ -13,14 +13,13 @@
 // limitations under the License.
 
 use anyhow::Result;
-use proxy_wasm_test_framework::{tester, types::*};
-use std::env;
+use proxy_wasm_test_framework::tester;
+use proxy_wasm_test_framework::types::*;
+use structopt::StructOpt;
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
-    assert_eq!(args.len(), 2);
-    let hello_world_path = &args[1];
-    let mut hello_world_test = tester::test(hello_world_path)?;
+    let args = tester::MockSettings::from_args();
+    let mut hello_world_test = tester::mock(args)?;
 
     hello_world_test
         .call_start()
@@ -33,18 +32,22 @@ fn main() -> Result<()> {
 
     hello_world_test
         .call_proxy_on_vm_start(root_context, 0)
-        .expect_log(LogLevel::Info, "Hello, World!")
-        .expect_set_tick_period_millis(5 * 10u64.pow(3))
+        .expect_log(Some(LogLevel::Info), Some("Hello, World!"))
+        .expect_set_tick_period_millis(Some(5 * 10u64.pow(3)))
         .execute_and_expect(ReturnType::Bool(true))?;
 
     hello_world_test
         .call_proxy_on_tick(root_context)
         .expect_get_current_time_nanos()
-        .returning(0 * 10u64.pow(9))
+        .returning(Some(0 * 10u64.pow(9)))
+        .expect_log(Some(LogLevel::Info), Some("It's 1970-01-01 00:00:00 UTC"))
         .execute_and_expect(ReturnType::None)?;
 
     hello_world_test
         .call_proxy_on_tick(root_context)
+        .expect_get_current_time_nanos()
+        .returning(None)
+        .expect_log(Some(LogLevel::Info), None)
         .execute_and_expect(ReturnType::None)?;
 
     return Ok(());
