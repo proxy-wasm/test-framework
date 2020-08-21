@@ -72,16 +72,16 @@ enum FunctionCall {
     ProxyOnQueueReady(i32, i32),
     ProxyOnContextCreate(i32, i32),
     ProxyOnNewConnection(i32),
-    ProxyOnDownstreamData(i32, i32, i32),
+    ProxyOnDownstreamData(i32, i32, bool),
     ProxyOnDownstreamConnectionClose(i32, i32),
-    ProxyOnUpstreamData(i32, i32, i32),
+    ProxyOnUpstreamData(i32, i32, bool),
     ProxyOnUpstreamConnectionClose(i32, i32),
-    ProxyOnRequestHeaders(i32, i32, i32),
-    ProxyOnRequestBody(i32, i32, i32),
+    ProxyOnRequestHeaders(i32, i32, bool),
+    ProxyOnRequestBody(i32, i32, bool),
     ProxyOnRequestTrailers(i32, i32),
     ProxyOnRequestMetadata(i32, i32),
-    ProxyOnResponseHeaders(i32, i32, i32),
-    ProxyOnResponseBody(i32, i32, i32),
+    ProxyOnResponseHeaders(i32, i32, bool),
+    ProxyOnResponseBody(i32, i32, bool),
     ProxyOnResponseTrailers(i32, i32),
     ProxyOnResponseMetadata(i32, i32),
     ProxyOnHttpCallResponse(i32, i32, i32, i32, i32),
@@ -517,7 +517,7 @@ impl Tester {
                         "[host->vm] proxy_on_downstream_data(context_id={}, data_size={}, end_of_stream={})",
                         context_id, data_size, end_of_stream
                     );
-                let action = proxy_on_downstream_data(context_id, data_size, end_of_stream)?;
+                let action = proxy_on_downstream_data(context_id, data_size, end_of_stream as i32)?;
                 println!(
                     "[host<-vm] proxy_on_downstream_data return: action={}",
                     action
@@ -552,7 +552,7 @@ impl Tester {
                         "[host->vm] proxy_on_upstream_data(context_id={}, data_size={}, end_of_stream={})",
                         context_id, data_size, end_of_stream
                     );
-                let action = proxy_on_upstream_data(context_id, data_size, end_of_stream)?;
+                let action = proxy_on_upstream_data(context_id, data_size, end_of_stream as i32)?;
                 println!(
                     "[host<-vm] proxy_on_upstream_data return: action={}",
                     action
@@ -592,7 +592,7 @@ impl Tester {
                     }
                     AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_request_headers
                         .get3::<i32, i32, i32, i32>()?(
-                        context_id, num_headers, end_of_stream
+                        context_id, num_headers, end_of_stream as i32
                     )?,
                     _ => panic!(
                         "Error: proxy_on_request_headers not supported for {:?}",
@@ -619,7 +619,7 @@ impl Tester {
                         "[host->vm] proxy_on_request_body(context_id={}, body_size={}, end_of_stream={})",
                         context_id, body_size, end_of_stream
                     );
-                let action = proxy_on_request_body(context_id, body_size, end_of_stream)?;
+                let action = proxy_on_request_body(context_id, body_size, end_of_stream as i32)?;
                 println!("[host<-vm] proxy_on_request_body return: action={}", action);
                 return_wasm = Some(action);
             }
@@ -681,7 +681,7 @@ impl Tester {
                     }
                     AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_response_headers
                         .get3::<i32, i32, i32, i32>()?(
-                        context_id, num_headers, end_of_stream
+                        context_id, num_headers, end_of_stream as i32
                     )?,
                     _ => panic!(
                         "Error: proxy_on_response_headers not supported for {:?}",
@@ -707,7 +707,7 @@ impl Tester {
                         "[host->vm] proxy_on_response_body(context_id={}, body_size={}, end_of_stream={})",
                         context_id, body_size, end_of_stream
                     );
-                let action = proxy_on_response_body(context_id, body_size, end_of_stream)?;
+                let action = proxy_on_response_body(context_id, body_size, end_of_stream as i32)?;
                 println!("[host<-vm] function return: action -> {}", action);
                 return_wasm = Some(action);
             }
@@ -1008,7 +1008,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         data_size: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         self.function_call.push(FunctionCall::ProxyOnDownstreamData(
             context_id,
@@ -1037,7 +1037,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         data_size: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         self.function_call.push(FunctionCall::ProxyOnUpstreamData(
             context_id,
@@ -1066,7 +1066,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         num_headers: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         self.function_call.push(FunctionCall::ProxyOnRequestHeaders(
             context_id,
@@ -1081,7 +1081,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         body_size: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         self.function_call.push(FunctionCall::ProxyOnRequestBody(
             context_id,
@@ -1117,7 +1117,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         num_headers: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         self.function_call
             .push(FunctionCall::ProxyOnResponseHeaders(
@@ -1133,7 +1133,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         body_size: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         self.function_call.push(FunctionCall::ProxyOnResponseBody(
             context_id,
@@ -1288,7 +1288,7 @@ impl Tester {
         let mut headers = headers;
         let mut body = body;
         let mut trailers = trailers;
-        let end_of_stream = 0;
+        let end_of_stream = false;
         if let Some((map_type, header_map_pairs)) = headers.take() {
             let num_headers = header_map_pairs.len() as i32;
             self.set_default_header_map_pairs(map_type)
