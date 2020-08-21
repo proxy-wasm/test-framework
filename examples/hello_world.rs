@@ -45,6 +45,9 @@ fn main() -> Result<()> {
 
     hello_world_test
         .call_proxy_on_tick(root_context)
+        .expect_get_current_time_nanos()
+        .returning(None)
+        .expect_log(Some(LogLevel::Info), None)
         .execute_and_expect(ReturnType::None)?;
 
     return Ok(());

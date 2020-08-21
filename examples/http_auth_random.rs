@@ -36,7 +36,7 @@ fn main() -> Result<()> {
         .execute_and_expect(ReturnType::None)?;
 
     http_auth_random
-        .call_proxy_on_request_headers(http_context, 0, 0)
+        .call_proxy_on_request_headers(http_context, 0, false)
         .expect_http_call(
             Some("httpbin"),
             Some(vec![
@@ -65,7 +65,7 @@ fn main() -> Result<()> {
         .execute_and_expect(ReturnType::None)?;
 
     http_auth_random
-        .call_proxy_on_response_headers(http_context, 0, 0)
+        .call_proxy_on_response_headers(http_context, 0, false)
         .expect_replace_header_map_value(
             Some(MapType::HttpResponseHeaders),
             Some("Powered-By"),

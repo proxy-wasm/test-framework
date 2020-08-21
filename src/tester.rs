@@ -75,15 +75,15 @@ enum FunctionCall {
     ProxyOnTick(i32),
     ProxyOnQueueReady(i32, i32),
     ProxyOnNewConnection(i32),
-    ProxyOnDownstreamData(i32, i32, i32),
+    ProxyOnDownstreamData(i32, i32, bool),
     ProxyOnDownstreamConnectionClose(i32, i32),
-    ProxyOnUpstreamData(i32, i32, i32),
+    ProxyOnUpstreamData(i32, i32, bool),
     ProxyOnUpstreamConnectionClose(i32, i32),
-    ProxyOnRequestHeaders(i32, i32, i32),
-    ProxyOnRequestBody(i32, i32, i32),
+    ProxyOnRequestHeaders(i32, i32, bool),
+    ProxyOnRequestBody(i32, i32, bool),
     ProxyOnRequestTrailers(i32, i32),
-    ProxyOnResponseHeaders(i32, i32, i32),
-    ProxyOnResponseBody(i32, i32, i32),
+    ProxyOnResponseHeaders(i32, i32, bool),
+    ProxyOnResponseBody(i32, i32, bool),
     ProxyOnResponseTrailers(i32, i32),
     ProxyOnHttpCallResponse(i32, i32, i32, i32, i32),
 }
@@ -486,7 +486,11 @@ impl Tester {
                         "Error: failed to find 'proxy_on_downstream_data' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
-                let action = proxy_on_downstream_data(context_id, data_size, end_of_stream)?;
+                println!(
+                        "[host->vm] proxy_on_downstream_data(context_id={}, data_size={}, end_of_stream={})",
+                        context_id, data_size, end_of_stream
+                    );
+                let action = proxy_on_downstream_data(context_id, data_size, end_of_stream as i32)?;
                 println!(
                     "[host<-vm] proxy_on_downstream_data return: action={}",
                     action
@@ -513,7 +517,7 @@ impl Tester {
                         "Error: failed to find 'proxy_on_upstream_data' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
-                let action = proxy_on_upstream_data(context_id, data_size, end_of_stream)?;
+                let action = proxy_on_upstream_data(context_id, data_size, end_of_stream as i32)?;
                 println!(
                     "[host<-vm] proxy_on_upstream_data return: action={}",
                     action
@@ -545,7 +549,9 @@ impl Tester {
                     }
                     AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_request_headers
                         .get3::<i32, i32, i32, i32>()?(
-                        context_id, num_headers, end_of_stream
+                        context_id,
+                        num_headers,
+                        end_of_stream as i32,
                     )?,
                     _ => panic!(
                         "Error: proxy_on_request_headers not supported for {:?}",
@@ -567,7 +573,7 @@ impl Tester {
                         "Error: failed to find 'proxy_on_request_body' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
-                let action = proxy_on_request_body(context_id, body_size, end_of_stream)?;
+                let action = proxy_on_request_body(context_id, body_size, end_of_stream as i32)?;
                 println!("[host<-vm] proxy_on_request_body return: action={}", action);
                 return_wasm = Some(action);
             }
@@ -601,7 +607,9 @@ impl Tester {
                     }
                     AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_response_headers
                         .get3::<i32, i32, i32, i32>()?(
-                        context_id, num_headers, end_of_stream
+                        context_id,
+                        num_headers,
+                        end_of_stream as i32,
                     )?,
                     _ => panic!(
                         "Error: proxy_on_response_headers not supported for {:?}",
@@ -623,7 +631,7 @@ impl Tester {
                         "Error: failed to find 'proxy_on_response_body' function export"
                     ))?
                     .get3::<i32, i32, i32, i32>()?;
-                let action = proxy_on_response_body(context_id, body_size, end_of_stream)?;
+                let action = proxy_on_response_body(context_id, body_size, end_of_stream as i32)?;
                 println!("[host<-vm] function return: action -> {}", action);
                 return_wasm = Some(action);
             }
@@ -811,7 +819,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         data_size: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         println!(
             "[host->vm] proxy_on_downstream_data(context_id={}, data_size={}, end_of_stream={})",
@@ -842,7 +850,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         data_size: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         println!(
             "[host->vm] proxy_on_upstream_data(context_id={}, data_size={}, end_of_stream={})",
@@ -873,7 +881,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         num_headers: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         println!(
             "[host->vm] proxy_on_request_headers(context_id={}, num_headers={}, end_of_stream={})",
@@ -889,7 +897,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         body_size: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         println!(
             "[host->vm] proxy_on_request_body(context_id={}, body_size={}, end_of_stream={})",
@@ -918,7 +926,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         num_headers: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         println!(
             "[host->vm] proxy_on_response_headers(context_id={}, num_headers={}, end_of_stream={})",
@@ -934,7 +942,7 @@ impl Tester {
         &mut self,
         context_id: i32,
         body_size: i32,
-        end_of_stream: i32,
+        end_of_stream: bool,
     ) -> &mut Self {
         println!(
             "[host->vm] proxy_on_response_body(context_id={}, body_size={}, end_of_stream={})",
