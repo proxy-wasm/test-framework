@@ -177,7 +177,7 @@ jobs:
       run: cd proxy-wasm-rust-sdk && cargo build --release --examples --target=wasm32-unknown-unknown && cd ..
 
     - name: Test (hello_world)
-      run: target/release/examples/hello_world proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/hello_world.wasm -a
+      run: target/release/examples/hello_world proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/hello_world.wasm
 
     - name: Test (http_auth_random)
       run: target/release/examples/http_auth_random proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_auth_random.wasm -a

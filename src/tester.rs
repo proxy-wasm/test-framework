@@ -592,7 +592,9 @@ impl Tester {
                     }
                     AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_request_headers
                         .get3::<i32, i32, i32, i32>()?(
-                        context_id, num_headers, end_of_stream as i32
+                        context_id,
+                        num_headers,
+                        end_of_stream as i32,
                     )?,
                     _ => panic!(
                         "Error: proxy_on_request_headers not supported for {:?}",
@@ -681,7 +683,9 @@ impl Tester {
                     }
                     AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_response_headers
                         .get3::<i32, i32, i32, i32>()?(
-                        context_id, num_headers, end_of_stream as i32
+                        context_id,
+                        num_headers,
+                        end_of_stream as i32,
                     )?,
                     _ => panic!(
                         "Error: proxy_on_response_headers not supported for {:?}",
