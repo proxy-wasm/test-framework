@@ -21,16 +21,22 @@ fn main() -> Result<()> {
     let args = tester::MockSettings::from_args();
     let mut http_headers_test = tester::mock(args)?;
 
+    let root_context = 1;
+    let http_context = 2;
+    http_headers_test
+        .call_start()
+        .call_proxy_on_context_create(root_context, 0)
+        .call_proxy_on_context_create(http_context, root_context)
+        .execute_and_expect_n(vec![ReturnType::None, ReturnType::None, ReturnType::None])?;
+
     http_headers_test
         .http_request(
-            Some((
-                MapType::HttpRequestHeaders,
-                vec![
-                    (":method", "GET"),
-                    (":path", "/hello"),
-                    (":authority", "developer"),
-                ],
-            )),
+            http_context,
+            Some(vec![
+                (":method", "GET"),
+                (":path", "/hello"),
+                (":authority", "developer"),
+            ]),
             None,
             None,
         )?
@@ -45,14 +51,16 @@ fn main() -> Result<()> {
         )
         .execute_and_expect_n(vec![ReturnType::Action(Action::Pause)])?;
 
-    let http_context = 2;
     http_headers_test
-        .call_proxy_on_response_headers(http_context, 0, false)
-        .expect_get_header_map_pairs(Some(MapType::HttpResponseHeaders))
-        .returning(Some(vec![(":status", "200"), ("Powered-By", "proxy-wasm")]))
+        .http_response(
+            http_context,
+            Some(vec![(":status", "200"), ("Powered-By", "proxy-wasm")]),
+            None,
+            None,
+        )?
         .expect_log(Some(LogLevel::Trace), Some("#2 <- :status: 200"))
         .expect_log(Some(LogLevel::Trace), Some("#2 <- Powered-By: proxy-wasm"))
-        .execute_and_expect(ReturnType::Action(Action::Continue))?;
+        .execute_and_expect_n(vec![ReturnType::Action(Action::Continue)])?;
 
     http_headers_test
         .call_proxy_on_log(http_context)

@@ -1277,43 +1277,71 @@ impl Tester {
     /* ---------------------------------- Combination Calls ---------------------------------- */
     pub fn http_request(
         &mut self,
-        headers: Option<(MapType, Vec<(&str, &str)>)>,
-        body: Option<(BufferType, &str)>,
-        trailers: Option<(MapType, Vec<(&str, &str)>)>,
+        http_context: i32,
+        headers: Option<Vec<(&str, &str)>>,
+        body: Option<&str>,
+        trailers: Option<Vec<(&str, &str)>>,
     ) -> Result<&mut Self> {
-        let root_context = 1;
-        let http_context = 2;
-        self.call_start()
-            .call_proxy_on_context_create(root_context, 0)
-            .call_proxy_on_context_create(http_context, root_context)
-            .execute_and_expect_n(vec![ReturnType::None, ReturnType::None, ReturnType::None])?;
-
         self.toggle_strict_mode(false);
         let mut headers = headers;
         let mut body = body;
         let mut trailers = trailers;
         let end_of_stream = false;
-        if let Some((map_type, header_map_pairs)) = headers.take() {
+        if let Some(header_map_pairs) = headers.take() {
             let num_headers = header_map_pairs.len() as i32;
-            self.set_default_header_map_pairs(map_type)
+            self.set_default_header_map_pairs(MapType::HttpRequestHeaders)
                 .returning(header_map_pairs)
                 .call_proxy_on_request_headers(http_context, num_headers, end_of_stream);
         }
 
-        if let Some((buffer_type, body_data)) = body.take() {
+        if let Some(body_data) = body.take() {
             let body_size = body_data.len() as i32;
-            self.set_default_buffer_bytes(buffer_type)
+            self.set_default_buffer_bytes(BufferType::HttpRequestBody)
                 .returning(body_data)
                 .call_proxy_on_request_body(http_context, body_size, end_of_stream);
         }
 
-        if let Some((map_type, header_map_pairs)) = trailers.take() {
+        if let Some(header_map_pairs) = trailers.take() {
             let num_trailers = header_map_pairs.len() as i32;
-            self.set_default_header_map_pairs(map_type)
+            self.set_default_header_map_pairs(MapType::HttpRequestTrailers)
                 .returning(header_map_pairs)
                 .call_proxy_on_request_trailers(http_context, num_trailers);
         }
+        Ok(self)
+    }
 
+    pub fn http_response(
+        &mut self,
+        http_context: i32,
+        headers: Option<Vec<(&str, &str)>>,
+        body: Option<&str>,
+        trailers: Option<Vec<(&str, &str)>>,
+    ) -> Result<&mut Self> {
+        self.toggle_strict_mode(false);
+        let mut headers = headers;
+        let mut body = body;
+        let mut trailers = trailers;
+        let end_of_stream = false;
+        if let Some(header_map_pairs) = headers.take() {
+            let num_headers = header_map_pairs.len() as i32;
+            self.set_default_header_map_pairs(MapType::HttpResponseHeaders)
+                .returning(header_map_pairs)
+                .call_proxy_on_response_headers(http_context, num_headers, end_of_stream);
+        }
+
+        if let Some(body_data) = body.take() {
+            let body_size = body_data.len() as i32;
+            self.set_default_buffer_bytes(BufferType::HttpResponseBody)
+                .returning(body_data)
+                .call_proxy_on_response_body(http_context, body_size, end_of_stream);
+        }
+
+        if let Some(header_map_pairs) = trailers.take() {
+            let num_trailers = header_map_pairs.len() as i32;
+            self.set_default_header_map_pairs(MapType::HttpResponseTrailers)
+                .returning(header_map_pairs)
+                .call_proxy_on_response_trailers(http_context, num_trailers);
+        }
         Ok(self)
     }
 }

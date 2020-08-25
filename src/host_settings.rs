@@ -44,6 +44,7 @@ impl HostHandle {
 pub struct HostSettings {
     abi_version: AbiVersion,
     quiet: bool,
+    effective_context_id: i32,
     tick_period_millis: Duration,
     header_map_pairs: HashMap<i32, Vec<(String, String)>>,
     buffer_bytes: HashMap<i32, Bytes>,
@@ -54,6 +55,7 @@ impl HostSettings {
         HostSettings {
             abi_version: abi_version,
             quiet: quiet,
+            effective_context_id: -1,
             tick_period_millis: Duration::new(0, 0),
             header_map_pairs: default_header_map_pairs(),
             buffer_bytes: default_buffer_bytes(),
@@ -74,6 +76,14 @@ impl HostSettings {
 
     pub fn get_quiet_mode(&mut self) -> bool {
         self.quiet
+    }
+
+    pub fn set_effective_context(&mut self, effective_context_id: i32) {
+        self.effective_context_id = effective_context_id;
+    }
+
+    pub fn get_effective_context(&mut self) -> i32 {
+        self.effective_context_id
     }
 
     pub fn reset_tick_period_millis(&mut self) {

@@ -1534,6 +1534,10 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         "[vm->host] proxy_set_effective_context(...) return: {:?}",
                         Status::Ok
                     );
+                    HOST.lock()
+                        .unwrap()
+                        .staged
+                        .set_effective_context(context_id);
                     assert_ne!(get_status(), ExpectStatus::Failed);
                     set_status(ExpectStatus::Unexpected);
                     return Status::Ok as i32;
