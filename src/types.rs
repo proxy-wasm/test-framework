@@ -30,6 +30,29 @@ pub enum Action {
     Pause = 1,
 }
 
+#[repr(i32)]
+#[derive(Debug, Clone, Copy)]
+pub enum GrpcStatus {
+    Ok = 0,
+    Canceled = 1,
+    Unknown = 2,
+    InvalidArgument = 3,
+    DeadlineExceeded = 4,
+    NotFound = 5,
+    AlreadyExists = 6,
+    PermissionDenied = 7,
+    ResourceExhausted = 8,
+    FailedPrecondition = 9,
+    Aborted = 10,
+    OutOfRange = 11,
+    Unimplemented = 12,
+    Internal = 13,
+    Unavailable = 14,
+    DataLoss = 15,
+    Unauthenticated = 16,
+    InvalidCode = -1,
+}
+
 #[repr(u32)]
 #[derive(Debug)]
 pub enum Status {
@@ -39,6 +62,22 @@ pub enum Status {
     Empty = 7,
     CasMismatch = 8,
     InternalFailure = 10,
+}
+
+#[repr(u32)]
+#[derive(Debug)]
+pub enum MetricType {
+    Counter = 0,
+    Gauge = 1,
+    Histogram = 2,
+}
+
+#[repr(u32)]
+#[derive(Debug)]
+pub enum CloseType {
+    Unknown = 0,
+    Local = 1,  // Close initiated by the proxy.
+    Remote = 2, // Close initiated by the peer.
 }
 
 #[repr(u32)]

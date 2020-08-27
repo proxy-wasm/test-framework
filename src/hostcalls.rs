@@ -67,6 +67,51 @@ pub fn generate_import_list(
 
 fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) -> Option<Func> {
     match import.name() {
+        /* ---------------------------------- Configuration and Status ---------------------------------- */
+        "proxy_get_configuration" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _return_buffer_data: i32, _return_buffer_size: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    assert_eq!(
+                        HOST.lock().unwrap().staged.get_abi_version(),
+                        AbiVersion::ProxyAbiVersion0_1_0
+                    );
+                    println!(
+                        "[vm->host] proxy_get_configuration() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!("[vm<-host] proxy_get_configuration() -> (return_buffer_data, return_buffer_size) return: {:?}", Status::InternalFailure);
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_get_status" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _status_code_ptr: i32,
+                 _message_ptr: i32,
+                 _message_size: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_get_status() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_get_status() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- Logging ---------------------------------- */
         "proxy_log" => {
             Some(Func::wrap(
                 &store,
@@ -118,6 +163,26 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        "proxy_get_log_level" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _level: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_get_log_level() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_get_log_level() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- Timer ---------------------------------- */
         "proxy_set_tick_period_milliseconds" => {
             Some(Func::wrap(
                 &store,
@@ -150,6 +215,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- Time ---------------------------------- */
         "proxy_get_current_time_nanoseconds" => {
             Some(Func::wrap(
                 &store,
@@ -200,139 +266,155 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
-        "proxy_get_configuration" => {
+        /* ---------------------------------- State Accessors ---------------------------------- */
+        "proxy_get_property" => {
             Some(Func::wrap(
                 &store,
-                |_caller: Caller<'_>, _return_buffer_data: i32, _return_buffer_size: i32| -> i32 {
+                |_caller: Caller<'_>,
+                 _path_data: i32,
+                 _path_size: i32,
+                 _return_value_data: i32,
+                 _return_value_size: i32|
+                 -> i32 {
                     // Default Function:
                     // Expectation:
-                    assert_eq!(
-                        HOST.lock().unwrap().staged.get_abi_version(),
-                        AbiVersion::ProxyAbiVersion0_1_0
-                    );
                     println!(
-                        "[vm->host] proxy_get_configuration() -> (...) status: {:?}",
+                        "[vm->host] proxy_get_property(path_data, path_size) -> (...) status: {:?}",
                         get_status()
                     );
-                    println!("[vm<-host] proxy_get_configuration() -> (return_buffer_data, return_buffer_size) return: {:?}", Status::InternalFailure);
+                    println!("[vm<-host] proxy_get_property(...) -> (return_value_data, return_value_size) return: {:?}", Status::InternalFailure);
                     return Status::InternalFailure as i32;
                 },
             ))
         }
 
-        "proxy_get_buffer_bytes" => {
+        "proxy_set_property" => {
             Some(Func::wrap(
                 &store,
-                |caller: Caller<'_>,
-                 buffer_type: i32,
-                 start: i32,
-                 max_size: i32,
-                 return_buffer_data: i32,
-                 return_buffer_size: i32|
+                |_caller: Caller<'_>,
+                 _path_data: i32,
+                 _path_size: i32,
+                 _value_data: i32,
+                 _value_size: i32|
                  -> i32 {
-                    // Default Function: generate and return random buffer_bytes of length max_size - start
-                    // Expectation: return buffer bytes set in expectation
-                    let mem = match caller.get_export("memory") {
-                        Some(Extern::Memory(mem)) => mem,
-                        _ => {
-                            println!("Error: proxy_get_buffer_bytes cannot get export \"memory\"");
-                            println!("[vm<-host] proxy_get_buffer_bytes(...) -> (return_buffer_data, return_buffer_size) return: {:?}", Status::InternalFailure);
-                            return Status::InternalFailure as i32;
-                        }
-                    };
-
-                    let malloc = match caller.get_export("malloc") {
-                        Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
-                        _ => {
-                            println!("Error: proxy_get_buffer_bytes cannot get export \"malloc\"");
-                            println!("[vm<-host] proxy_get_buffer_bytes(...) -> (return_buffer_data, return_buffer_size) return: {:?}", Status::InternalFailure);
-                            return Status::InternalFailure as i32;
-                        }
-                    };
-
-                    let response_body = match EXPECT
-                        .lock()
-                        .unwrap()
-                        .staged
-                        .get_expect_get_buffer_bytes(buffer_type)
-                    {
-                        Some(expect_buffer_bytes) => {
-                            assert_le!(expect_buffer_bytes.len(), (max_size - start) as usize);
-                            expect_buffer_bytes
-                        }
-                        None => {
-                            let buffer_bytes: Bytes;
-                            let host_buffer_bytes =
-                                HOST.lock().unwrap().staged.get_buffer_bytes(buffer_type);
-                            if host_buffer_bytes.len() == (max_size - start) as usize {
-                                buffer_bytes = host_buffer_bytes;
-                            } else {
-                                buffer_bytes = serial_utils::generate_random_string(
-                                    (max_size - start) as usize,
-                                )
-                                .as_bytes()
-                                .to_vec();
-                            }
-                            buffer_bytes
-                        }
-                    };
-
-                    unsafe {
-                        let return_buffer_size_ptr = mem.data_unchecked_mut().get_unchecked_mut(
-                            return_buffer_size as u32 as usize
-                                ..return_buffer_size as u32 as usize + 4,
-                        );
-
-                        let return_buffer_data_ptr = mem.data_unchecked_mut().get_unchecked_mut(
-                            return_buffer_data as u32 as usize
-                                ..return_buffer_data as u32 as usize + 4,
-                        );
-
-                        // allocate memory and store buffer bytes
-                        let buffer_data_add =
-                            malloc(response_body.len() as i32).unwrap() as u32 as usize;
-                        let buffer_data_ptr = mem.data_unchecked_mut().get_unchecked_mut(
-                            buffer_data_add..buffer_data_add + response_body.len(),
-                        );
-                        buffer_data_ptr.copy_from_slice(&response_body);
-
-                        return_buffer_size_ptr
-                            .copy_from_slice(&(response_body.len() as u32).to_le_bytes());
-                        return_buffer_data_ptr
-                            .copy_from_slice(&(buffer_data_add as u32).to_le_bytes());
-                    }
+                    // Default Function:
+                    // Expectation:
+                    println!("[vm->host] proxy_set_property(path_data, path_size, value_data, value_size) status: {:?}", get_status());
                     println!(
-                        "[vm->host] proxy_get_buffer_bytes(buffer_type={}, start={}, max_size={}) -> (...) status: {:?}",
-                        buffer_type, start, max_size, get_status()
+                        "[vm<-host] proxy_set_property(...) return: {:?}",
+                        Status::InternalFailure
                     );
-                    println!(
-                        "[vm<-host] proxy_get_buffer_bytes(...) -> (return_buffer_data, return_buffer_size) return: {:?}", Status::Ok
-                    );
-                    assert_ne!(get_status(), ExpectStatus::Failed);
-                    set_status(ExpectStatus::Unexpected);
-                    return Status::Ok as i32;
+                    return Status::InternalFailure as i32;
                 },
             ))
         }
 
-        "proxy_set_buffer_bytes" => {
+        /* ---------------------------------- Continue/Close/Reply/Route ---------------------------------- */
+        "proxy_continue_stream" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                assert_eq!(
+                    HOST.lock().unwrap().staged.get_abi_version(),
+                    AbiVersion::ProxyAbiVersion0_2_0
+                );
+                println!(
+                    "[vm->host] proxy_continue_stream() status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_continue_stream() return: {:?}",
+                    Status::Ok
+                );
+                assert_ne!(get_status(), ExpectStatus::Failed);
+                set_status(ExpectStatus::Unexpected);
+                return Status::Ok as i32;
+            }))
+        }
+
+        "proxy_close_stream" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                assert_eq!(
+                    HOST.lock().unwrap().staged.get_abi_version(),
+                    AbiVersion::ProxyAbiVersion0_2_0
+                );
+                println!("[vm->host] proxy_close_stream() status: {:?}", get_status());
+                println!("[vm<-host] proxy_close_stream() return: {:?}", Status::Ok);
+                assert_ne!(get_status(), ExpectStatus::Failed);
+                set_status(ExpectStatus::Unexpected);
+                return Status::Ok as i32;
+            }))
+        }
+
+        "proxy_continue_request" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                assert_eq!(
+                    HOST.lock().unwrap().staged.get_abi_version(),
+                    AbiVersion::ProxyAbiVersion0_1_0
+                );
+                println!(
+                    "[vm->host] proxy_continue_request() status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_continue_request() return: {:?}",
+                    Status::Ok
+                );
+                assert_ne!(get_status(), ExpectStatus::Failed);
+                set_status(ExpectStatus::Unexpected);
+                return Status::Ok as i32;
+            }))
+        }
+
+        "proxy_continue_response" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                assert_eq!(
+                    HOST.lock().unwrap().staged.get_abi_version(),
+                    AbiVersion::ProxyAbiVersion0_1_0
+                );
+                println!(
+                    "[vm->host] proxy_continue_response() status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_continue_response() return: {:?}",
+                    Status::Ok
+                );
+                assert_ne!(get_status(), ExpectStatus::Failed);
+                set_status(ExpectStatus::Unexpected);
+                return Status::Ok as i32;
+            }))
+        }
+
+        "proxy_send_local_response" => {
             Some(Func::wrap(
                 &store,
                 |caller: Caller<'_>,
-                 buffer_type: i32,
-                 start: i32,
-                 size: i32,
-                 buffer_data: i32,
-                 buffer_size: i32|
+                 status_code: i32,
+                 _status_code_details_data: i32,
+                 _status_code_details_size: i32,
+                 body_data: i32,
+                 body_size: i32,
+                 headers_data: i32,
+                 headers_size: i32,
+                 grpc_status: i32|
                  -> i32 {
-                    // Default Function: set received buffer data as default
-                    // Expectation: assert that the received buffer bytes is as expected
+                    // Default Function: receive and display local response
+                    // Expectation: assert equal the received local response with the expected one
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
-                            println!("Error: proxy_set_buffer_bytes cannot get export \"memory\"");
                             println!(
-                                "[vm<-host] proxy_set_buffer_bytes(...) return: {:?}",
+                                "Error: proxy_send_local_response cannot get export \"memory\""
+                            );
+                            println!(
+                                "[vm<-host] proxy_send_local_response(...) return: {:?}",
                                 Status::InternalFailure
                             );
                             return Status::InternalFailure as i32;
@@ -340,42 +422,201 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     unsafe {
-                        let buffer_data_ptr = mem.data_unchecked().get_unchecked(
-                            buffer_data as u32 as usize
-                                ..(buffer_data + buffer_size) as u32 as usize,
-                        );
-                        assert_ge!(buffer_data_ptr.len(), (start + size) as usize);
+                        let mut string_body: Option<&str> = None;
+                        if body_size > 0 {
+                            let body_data_ptr = mem
+                                .data_unchecked()
+                                .get(body_data as u32 as usize..)
+                                .and_then(|arr| arr.get(..body_size as u32 as usize));
+                            string_body = body_data_ptr
+                                .map(|string_msg| std::str::from_utf8(string_msg).unwrap());
+                        }
 
-                        EXPECT.lock().unwrap().staged.get_expect_set_buffer_bytes(
-                            buffer_type,
-                            &buffer_data_ptr[start as usize..(start + size) as usize],
+                        let header_data_ptr = mem.data_unchecked().get_unchecked(
+                            headers_data as u32 as usize
+                                ..headers_data as u32 as usize + headers_size as u32 as usize,
                         );
-                        HOST.lock().unwrap().staged.set_buffer_bytes(
-                            buffer_type,
-                            std::str::from_utf8(
-                                &buffer_data_ptr[start as usize..(start + size) as usize],
-                            )
-                            .unwrap(),
+                        let deserialized_header = serial_utils::deserialize_map(header_data_ptr);
+
+                        EXPECT
+                            .lock()
+                            .unwrap()
+                            .staged
+                            .get_expect_send_local_response(
+                                status_code,
+                                string_body,
+                                &header_data_ptr,
+                                grpc_status,
+                            );
+
+                        println!("[vm->host] proxy_send_local_response(status_code={}, status_code_details_data, status_code_details_size", status_code);
+                        println!(
+                            "                                     body_data={}, body_size={}",
+                            string_body.unwrap_or("None"),
+                            body_size
                         );
+                        println!("                                     headers_data={:?}, headers_size={}) status: {:?}", deserialized_header, headers_size, get_status());
                     }
                     println!(
-                        "[vm<-host] proxy_set_buffer_bytes(buffer_type={},
-                            start={},
-                            size={},
-                            buffer_data,
-                            buffer_size) status: {:?}",
-                        buffer_type,
-                        start,
-                        size,
-                        get_status()
-                    );
-                    println!(
-                        "[vm<-host] proxy_set_buffer_bytes(...) return: {:?}",
+                        "[vm<-host] proxy_send_local_response(...) return: {:?}",
                         Status::Ok
                     );
                     assert_ne!(get_status(), ExpectStatus::Failed);
                     set_status(ExpectStatus::Unexpected);
                     return Status::Ok as i32;
+                },
+            ))
+        }
+
+        "proxy_clear_route_cache" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_clear_route_cache() status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_clear_route_cache() return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        /* ---------------------------------- SharedData ---------------------------------- */
+        "proxy_get_shared_data" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _key_data: i32,
+                 _key_size: i32,
+                 _return_value_data: i32,
+                 _return_value_size: i32,
+                 _return_cas: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!("[vm->host] proxy_get_shared_data(key_data, key_size) -> (...) status: {:?}", get_status());
+                    println!("[vm<-host] proxy_get_shared_data(...) -> (return_value_data, return_value_size, return_cas) return: {:?}", Status::InternalFailure);
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_set_shared_data" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _key_data: i32,
+                 _key_size: i32,
+                 _value_data: i32,
+                 _value_size: i32,
+                 _cas: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!("[vm->host] proxy_set_shared_data(key_data, key_size, value_data, value_size, cas) status: {:?}", get_status());
+                    println!(
+                        "[vm<-host] proxy_set_shared_data(...) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- SharedQueue ---------------------------------- */
+        "proxy_register_shared_queue" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _name_data: i32, _name_size: i32, _return_id: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!("[vm->host] proxy_register_shared_queue(name_data, name_size) -> (...) status: {:?}", get_status());
+                    println!(
+                        "[vm<-host] proxy_register_shared_queue(...) -> (return_id) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_resolve_shared_queue" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _vm_id_data: i32,
+                 _vm_id_size: i32,
+                 _name_data: i32,
+                 _name_size: i32,
+                 _return_id: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!("[vm->host] proxy_resolve_shared_queue(vm_id_data, vm_id_size, name_data, name_size) -> (...) status: {:?}", get_status());
+                    println!(
+                        "[vm<-host] proxy_resolve_shared_queue(...) -> (return_id) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_dequeue_shared_queue" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _queue_id: i32,
+                 _payload_data: i32,
+                 _payload_size: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!("[vm->host] proxy_dequeue_shared_queue(queue_id, payload_data, payload_size) status: {:?}", get_status());
+                    println!(
+                        "[vm<-host] proxy_dequeue_shared_queue(...) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_enqueue_shared_queue" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _queue_id: i32, _value_data: i32, _value_size: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!("[vm->host] proxy_enqueue_shared_queue(queue_id, value_data, value_size) status: {:?}", get_status());
+                    println!(
+                        "[vm<-host] proxy_enqueue_shared_queue(...) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- Headers/Trailers/Metadata Maps ---------------------------------- */
+        "proxy_get_header_map_size" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _map_type: i32, _map_size: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_get_header_map_size() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_get_header_map_size() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
                 },
             ))
         }
@@ -792,41 +1033,23 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
-        "proxy_get_property" => {
+        /* ---------------------------------- Buffer ---------------------------------- */
+        "proxy_get_buffer_status" => {
             Some(Func::wrap(
                 &store,
                 |_caller: Caller<'_>,
-                 _path_data: i32,
-                 _path_size: i32,
-                 _return_value_data: i32,
-                 _return_value_size: i32|
+                 _buffer_type: i32,
+                 _length_ptr: i32,
+                 _flags_ptr: i32|
                  -> i32 {
                     // Default Function:
                     // Expectation:
                     println!(
-                        "[vm->host] proxy_get_property(path_data, path_size) -> (...) status: {:?}",
+                        "[vm->host] proxy_get_buffer_status() -> (...) status: {:?}",
                         get_status()
                     );
-                    println!("[vm<-host] proxy_get_property(...) -> (return_value_data, return_value_size) return: {:?}", Status::InternalFailure);
-                    return Status::InternalFailure as i32;
-                },
-            ))
-        }
-
-        "proxy_set_property" => {
-            Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
-                 _path_data: i32,
-                 _path_size: i32,
-                 _value_data: i32,
-                 _value_size: i32|
-                 -> i32 {
-                    // Default Function:
-                    // Expectation:
-                    println!("[vm->host] proxy_set_property(path_data, path_size, value_data, value_size) status: {:?}", get_status());
                     println!(
-                        "[vm<-host] proxy_set_property(...) return: {:?}",
+                        "[vm<-host] proxy_get_buffer_status() -> (..) return: {:?}",
                         Status::InternalFailure
                     );
                     return Status::InternalFailure as i32;
@@ -834,226 +1057,119 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
-        "proxy_get_shared_data" => {
-            Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
-                 _key_data: i32,
-                 _key_size: i32,
-                 _return_value_data: i32,
-                 _return_value_size: i32,
-                 _return_cas: i32|
-                 -> i32 {
-                    // Default Function:
-                    // Expectation:
-                    println!("[vm->host] proxy_get_shared_data(key_data, key_size) -> (...) status: {:?}", get_status());
-                    println!("[vm<-host] proxy_get_shared_data(...) -> (return_value_data, return_value_size, return_cas) return: {:?}", Status::InternalFailure);
-                    return Status::InternalFailure as i32;
-                },
-            ))
-        }
-
-        "proxy_set_shared_data" => {
-            Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
-                 _key_data: i32,
-                 _key_size: i32,
-                 _value_data: i32,
-                 _value_size: i32,
-                 _cas: i32|
-                 -> i32 {
-                    // Default Function:
-                    // Expectation:
-                    println!("[vm->host] proxy_set_shared_data(key_data, key_size, value_data, value_size, cas) status: {:?}", get_status());
-                    println!(
-                        "[vm<-host] proxy_set_shared_data(...) return: {:?}",
-                        Status::InternalFailure
-                    );
-                    return Status::InternalFailure as i32;
-                },
-            ))
-        }
-
-        "proxy_register_shared_queue" => {
-            Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _name_data: i32, _name_size: i32, _return_id: i32| -> i32 {
-                    // Default Function:
-                    // Expectation:
-                    println!("[vm->host] proxy_register_shared_queue(name_data, name_size) -> (...) status: {:?}", get_status());
-                    println!(
-                        "[vm<-host] proxy_register_shared_queue(...) -> (return_id) return: {:?}",
-                        Status::InternalFailure
-                    );
-                    return Status::InternalFailure as i32;
-                },
-            ))
-        }
-
-        "proxy_resolve_shared_queue" => {
-            Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
-                 _vm_id_data: i32,
-                 _vm_id_size: i32,
-                 _name_data: i32,
-                 _name_size: i32,
-                 _return_id: i32|
-                 -> i32 {
-                    // Default Function:
-                    // Expectation:
-                    println!("[vm->host] proxy_resolve_shared_queue(vm_id_data, vm_id_size, name_data, name_size) -> (...) status: {:?}", get_status());
-                    println!(
-                        "[vm<-host] proxy_resolve_shared_queue(...) -> (return_id) return: {:?}",
-                        Status::InternalFailure
-                    );
-                    return Status::InternalFailure as i32;
-                },
-            ))
-        }
-
-        "proxy_dequeue_shared_queue" => {
-            Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
-                 _queue_id: i32,
-                 _payload_data: i32,
-                 _payload_size: i32|
-                 -> i32 {
-                    // Default Function:
-                    // Expectation:
-                    println!("[vm->host] proxy_dequeue_shared_queue(queue_id, payload_data, payload_size) status: {:?}", get_status());
-                    println!(
-                        "[vm<-host] proxy_dequeue_shared_queue(...) return: {:?}",
-                        Status::InternalFailure
-                    );
-                    return Status::InternalFailure as i32;
-                },
-            ))
-        }
-
-        "proxy_enqueue_shared_queue" => {
-            Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _queue_id: i32, _value_data: i32, _value_size: i32| -> i32 {
-                    // Default Function:
-                    // Expectation:
-                    println!("[vm->host] proxy_enqueue_shared_queue(queue_id, value_data, value_size) status: {:?}", get_status());
-                    println!(
-                        "[vm<-host] proxy_enqueue_shared_queue(...) return: {:?}",
-                        Status::InternalFailure
-                    );
-                    return Status::InternalFailure as i32;
-                },
-            ))
-        }
-
-        "proxy_continue_stream" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
-                // Default Function:
-                // Expectation:
-                assert_eq!(
-                    HOST.lock().unwrap().staged.get_abi_version(),
-                    AbiVersion::ProxyAbiVersion0_2_0
-                );
-                println!(
-                    "[vm->host] proxy_continue_stream() status: {:?}",
-                    get_status()
-                );
-                println!(
-                    "[vm<-host] proxy_continue_stream() return: {:?}",
-                    Status::Ok
-                );
-                assert_ne!(get_status(), ExpectStatus::Failed);
-                set_status(ExpectStatus::Unexpected);
-                return Status::Ok as i32;
-            }))
-        }
-
-        "proxy_close_stream" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
-                // Default Function:
-                // Expectation:
-                assert_eq!(
-                    HOST.lock().unwrap().staged.get_abi_version(),
-                    AbiVersion::ProxyAbiVersion0_2_0
-                );
-                println!("[vm->host] proxy_close_stream() status: {:?}", get_status());
-                println!("[vm<-host] proxy_close_stream() return: {:?}", Status::Ok);
-                assert_ne!(get_status(), ExpectStatus::Failed);
-                set_status(ExpectStatus::Unexpected);
-                return Status::Ok as i32;
-            }))
-        }
-
-        "proxy_continue_request" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
-                // Default Function:
-                // Expectation:
-                assert_eq!(
-                    HOST.lock().unwrap().staged.get_abi_version(),
-                    AbiVersion::ProxyAbiVersion0_1_0
-                );
-                println!(
-                    "[vm->host] proxy_continue_request() status: {:?}",
-                    get_status()
-                );
-                println!(
-                    "[vm<-host] proxy_continue_request() return: {:?}",
-                    Status::Ok
-                );
-                assert_ne!(get_status(), ExpectStatus::Failed);
-                set_status(ExpectStatus::Unexpected);
-                return Status::Ok as i32;
-            }))
-        }
-
-        "proxy_continue_response" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
-                // Default Function:
-                // Expectation:
-                assert_eq!(
-                    HOST.lock().unwrap().staged.get_abi_version(),
-                    AbiVersion::ProxyAbiVersion0_1_0
-                );
-                println!(
-                    "[vm->host] proxy_continue_response() status: {:?}",
-                    get_status()
-                );
-                println!(
-                    "[vm<-host] proxy_continue_response() return: {:?}",
-                    Status::Ok
-                );
-                assert_ne!(get_status(), ExpectStatus::Failed);
-                set_status(ExpectStatus::Unexpected);
-                return Status::Ok as i32;
-            }))
-        }
-
-        "proxy_send_local_response" => {
+        "proxy_get_buffer_bytes" => {
             Some(Func::wrap(
                 &store,
                 |caller: Caller<'_>,
-                 status_code: i32,
-                 _status_code_details_data: i32,
-                 _status_code_details_size: i32,
-                 body_data: i32,
-                 body_size: i32,
-                 headers_data: i32,
-                 headers_size: i32,
-                 grpc_status: i32|
+                 buffer_type: i32,
+                 start: i32,
+                 max_size: i32,
+                 return_buffer_data: i32,
+                 return_buffer_size: i32|
                  -> i32 {
-                    // Default Function: receive and display local response
-                    // Expectation: assert equal the received local response with the expected one
+                    // Default Function: generate and return random buffer_bytes of length max_size - start
+                    // Expectation: return buffer bytes set in expectation
                     let mem = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
                         _ => {
+                            println!("Error: proxy_get_buffer_bytes cannot get export \"memory\"");
+                            println!("[vm<-host] proxy_get_buffer_bytes(...) -> (return_buffer_data, return_buffer_size) return: {:?}", Status::InternalFailure);
+                            return Status::InternalFailure as i32;
+                        }
+                    };
+
+                    let malloc = match caller.get_export("malloc") {
+                        Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
+                        _ => {
+                            println!("Error: proxy_get_buffer_bytes cannot get export \"malloc\"");
+                            println!("[vm<-host] proxy_get_buffer_bytes(...) -> (return_buffer_data, return_buffer_size) return: {:?}", Status::InternalFailure);
+                            return Status::InternalFailure as i32;
+                        }
+                    };
+
+                    let response_body = match EXPECT
+                        .lock()
+                        .unwrap()
+                        .staged
+                        .get_expect_get_buffer_bytes(buffer_type)
+                    {
+                        Some(expect_buffer_bytes) => {
+                            assert_le!(expect_buffer_bytes.len(), (max_size - start) as usize);
+                            expect_buffer_bytes
+                        }
+                        None => {
+                            let buffer_bytes: Bytes;
+                            let host_buffer_bytes =
+                                HOST.lock().unwrap().staged.get_buffer_bytes(buffer_type);
+                            if host_buffer_bytes.len() == (max_size - start) as usize {
+                                buffer_bytes = host_buffer_bytes;
+                            } else {
+                                buffer_bytes = serial_utils::generate_random_string(
+                                    (max_size - start) as usize,
+                                )
+                                .as_bytes()
+                                .to_vec();
+                            }
+                            buffer_bytes
+                        }
+                    };
+
+                    unsafe {
+                        let return_buffer_size_ptr = mem.data_unchecked_mut().get_unchecked_mut(
+                            return_buffer_size as u32 as usize
+                                ..return_buffer_size as u32 as usize + 4,
+                        );
+
+                        let return_buffer_data_ptr = mem.data_unchecked_mut().get_unchecked_mut(
+                            return_buffer_data as u32 as usize
+                                ..return_buffer_data as u32 as usize + 4,
+                        );
+
+                        // allocate memory and store buffer bytes
+                        let buffer_data_add =
+                            malloc(response_body.len() as i32).unwrap() as u32 as usize;
+                        let buffer_data_ptr = mem.data_unchecked_mut().get_unchecked_mut(
+                            buffer_data_add..buffer_data_add + response_body.len(),
+                        );
+                        buffer_data_ptr.copy_from_slice(&response_body);
+
+                        return_buffer_size_ptr
+                            .copy_from_slice(&(response_body.len() as u32).to_le_bytes());
+                        return_buffer_data_ptr
+                            .copy_from_slice(&(buffer_data_add as u32).to_le_bytes());
+                    }
+                    println!(
+                        "[vm->host] proxy_get_buffer_bytes(buffer_type={}, start={}, max_size={}) -> (...) status: {:?}",
+                        buffer_type, start, max_size, get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_get_buffer_bytes(...) -> (return_buffer_data, return_buffer_size) return: {:?}", Status::Ok
+                    );
+                    assert_ne!(get_status(), ExpectStatus::Failed);
+                    set_status(ExpectStatus::Unexpected);
+                    return Status::Ok as i32;
+                },
+            ))
+        }
+
+        "proxy_set_buffer_bytes" => {
+            Some(Func::wrap(
+                &store,
+                |caller: Caller<'_>,
+                 buffer_type: i32,
+                 start: i32,
+                 size: i32,
+                 buffer_data: i32,
+                 buffer_size: i32|
+                 -> i32 {
+                    // Default Function: set received buffer data as default
+                    // Expectation: assert that the received buffer bytes is as expected
+                    let mem = match caller.get_export("memory") {
+                        Some(Extern::Memory(mem)) => mem,
+                        _ => {
+                            println!("Error: proxy_set_buffer_bytes cannot get export \"memory\"");
                             println!(
-                                "Error: proxy_send_local_response cannot get export \"memory\""
-                            );
-                            println!(
-                                "[vm<-host] proxy_send_local_response(...) return: {:?}",
+                                "[vm<-host] proxy_set_buffer_bytes(...) return: {:?}",
                                 Status::InternalFailure
                             );
                             return Status::InternalFailure as i32;
@@ -1061,43 +1177,37 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     unsafe {
-                        let mut string_body: Option<&str> = None;
-                        if body_size > 0 {
-                            let body_data_ptr = mem
-                                .data_unchecked()
-                                .get(body_data as u32 as usize..)
-                                .and_then(|arr| arr.get(..body_size as u32 as usize));
-                            string_body = body_data_ptr
-                                .map(|string_msg| std::str::from_utf8(string_msg).unwrap());
-                        }
-
-                        let header_data_ptr = mem.data_unchecked().get_unchecked(
-                            headers_data as u32 as usize
-                                ..headers_data as u32 as usize + headers_size as u32 as usize,
+                        let buffer_data_ptr = mem.data_unchecked().get_unchecked(
+                            buffer_data as u32 as usize
+                                ..(buffer_data + buffer_size) as u32 as usize,
                         );
-                        let deserialized_header = serial_utils::deserialize_map(header_data_ptr);
+                        assert_ge!(buffer_data_ptr.len(), (start + size) as usize);
 
-                        EXPECT
-                            .lock()
-                            .unwrap()
-                            .staged
-                            .get_expect_send_local_response(
-                                status_code,
-                                string_body,
-                                &header_data_ptr,
-                                grpc_status,
-                            );
-
-                        println!("[vm->host] proxy_send_local_response(status_code={}, status_code_details_data, status_code_details_size", status_code);
-                        println!(
-                            "                                     body_data={}, body_size={}",
-                            string_body.unwrap_or("None"),
-                            body_size
+                        EXPECT.lock().unwrap().staged.get_expect_set_buffer_bytes(
+                            buffer_type,
+                            &buffer_data_ptr[start as usize..(start + size) as usize],
                         );
-                        println!("                                     headers_data={:?}, headers_size={}) status: {:?}", deserialized_header, headers_size, get_status());
+                        HOST.lock().unwrap().staged.set_buffer_bytes(
+                            buffer_type,
+                            std::str::from_utf8(
+                                &buffer_data_ptr[start as usize..(start + size) as usize],
+                            )
+                            .unwrap(),
+                        );
                     }
                     println!(
-                        "[vm<-host] proxy_send_local_response(...) return: {:?}",
+                        "[vm<-host] proxy_set_buffer_bytes(buffer_type={},
+                            start={},
+                            size={},
+                            buffer_data,
+                            buffer_size) status: {:?}",
+                        buffer_type,
+                        start,
+                        size,
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_set_buffer_bytes(...) return: {:?}",
                         Status::Ok
                     );
                     assert_ne!(get_status(), ExpectStatus::Failed);
@@ -1107,22 +1217,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
-        "proxy_clear_route_cache" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
-                // Default Function:
-                // Expectation:
-                println!(
-                    "[vm->host] proxy_clear_route_cache() status: {:?}",
-                    get_status()
-                );
-                println!(
-                    "[vm<-host] proxy_clear_route_cache() return: {:?}",
-                    Status::InternalFailure
-                );
-                return Status::InternalFailure as i32;
-            }))
-        }
-
+        /* ---------------------------------- HTTP ---------------------------------- */
         "proxy_http_call" => {
             Some(Func::wrap(
                 &store,
@@ -1234,6 +1329,196 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
             ))
         }
 
+        /* ---------------------------------- gRPC ---------------------------------- */
+        "proxy_grpc_call" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _service_ptr: i32,
+                 _service_size: i32,
+                 _service_name_ptr: i32,
+                 _service_name_size: i32,
+                 _method_name_ptr: i32,
+                 _method_name_size: i32,
+                 _initial_metadata_ptr: i32,
+                 _initial_metadata_size: i32,
+                 _request_ptr: i32,
+                 _request_size: i32,
+                 _timeout_milliseconds: i32,
+                 _token_ptr: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_call() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_call() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_grpc_stream" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _service_ptr: i32,
+                 _service_size: i32,
+                 _service_name_ptr: i32,
+                 _service_name_size: i32,
+                 _method_name_ptr: i32,
+                 _method_name_size: i32,
+                 _initial_metadata: i32,
+                 _initial_metadata_size: i32,
+                 _token_ptr: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_stream() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_stream() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_grpc_cancel" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _token: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_cancel() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_cancel() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_grpc_close" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>, _token: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_close() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_close() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        "proxy_grpc_send" => {
+            Some(Func::wrap(
+                &store,
+                |_caller: Caller<'_>,
+                 _token: i32,
+                 _message_ptr: i32,
+                 _message_size: i32,
+                 _end_of_stream: i32|
+                 -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    println!(
+                        "[vm->host] proxy_grpc_send() -> (...) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_grpc_send() -> (..) return: {:?}",
+                        Status::InternalFailure
+                    );
+                    return Status::InternalFailure as i32;
+                },
+            ))
+        }
+
+        /* ---------------------------------- Metrics ---------------------------------- */
+        "proxy_define_metric" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_define_metric() -> (...) status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_define_metric() -> (..) return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        "proxy_increment_metric" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_increment_metric() -> (...) status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_increment_metric() -> (..) return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        "proxy_record_metric" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_record_metric() -> (...) status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_record_metric() -> (..) return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        "proxy_get_metric" => {
+            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+                // Default Function:
+                // Expectation:
+                println!(
+                    "[vm->host] proxy_get_metric() -> (...) status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm<-host] proxy_get_metric() -> (..) return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            }))
+        }
+
+        /* ---------------------------------- System ---------------------------------- */
         "proxy_set_effective_context" => {
             Some(Func::wrap(
                 &store,
@@ -1249,6 +1534,10 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         "[vm->host] proxy_set_effective_context(...) return: {:?}",
                         Status::Ok
                     );
+                    HOST.lock()
+                        .unwrap()
+                        .staged
+                        .set_effective_context(context_id);
                     assert_ne!(get_status(), ExpectStatus::Failed);
                     set_status(ExpectStatus::Unexpected);
                     return Status::Ok as i32;
@@ -1268,6 +1557,28 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                 return Status::InternalFailure as i32;
             }))
         }
+
+        "proxy_call_foreign_function" => Some(Func::wrap(
+            &store,
+            |_caller: Caller<'_>,
+             _function_name: i32,
+             _function_name_size: i32,
+             _arguments: i32,
+             _arguments_size: i32,
+             _results: i32,
+             _size_t: i32|
+             -> i32 {
+                println!(
+                    "[vm->host] proxy_call_foreign_function() status: {:?}",
+                    get_status()
+                );
+                println!(
+                    "[vm->host] proxy_call_foreign_function() return: {:?}",
+                    Status::InternalFailure
+                );
+                return Status::InternalFailure as i32;
+            },
+        )),
 
         _ => None,
     }
