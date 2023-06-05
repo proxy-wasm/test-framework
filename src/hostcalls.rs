@@ -39,9 +39,9 @@ pub fn get_status() -> ExpectStatus {
 }
 
 pub fn get_abi_version(module: &Module) -> AbiVersion {
-    if module.get_export("proxy_abi_version_0_1_0") != None {
+    if module.get_export("proxy_abi_version_0_1_0").is_some() {
         AbiVersion::ProxyAbiVersion0_1_0
-    } else if module.get_export("proxy_abi_version_0_2_0") != None {
+    } else if module.get_export("proxy_abi_version_0_2_0").is_some() {
         AbiVersion::ProxyAbiVersion0_2_0
     } else {
         panic!("Error: test-framework does not support proxy-wasm modules of this abi version");
@@ -49,7 +49,7 @@ pub fn get_abi_version(module: &Module) -> AbiVersion {
 }
 
 pub fn generate_import_list(
-    store: &Store,
+    store: &mut Store<()>,
     module: &Module,
     func_vec: Arc<Mutex<Vec<Extern>>>,
 ) -> (Arc<Mutex<HostHandle>>, Arc<Mutex<ExpectHandle>>) {
@@ -57,7 +57,7 @@ pub fn generate_import_list(
     HOST.lock().unwrap().staged.set_abi_version(abi_version);
     let imports = module.imports();
     for import in imports {
-        match get_hostfunc(&store, abi_version, &import) {
+        match get_hostfunc(store, abi_version, &import) {
             Some(func) => (*func_vec).lock().unwrap().push(func.into()),
             None => panic!("Error: failed to acquire \"{}\"", import.name()),
         }
@@ -65,13 +65,13 @@ pub fn generate_import_list(
     (HOST.clone(), EXPECT.clone())
 }
 
-fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) -> Option<Func> {
+fn get_hostfunc(store: &mut Store<()>, _abi_version: AbiVersion, import: &ImportType) -> Option<Func> {
     match import.name() {
         /* ---------------------------------- Configuration and Status ---------------------------------- */
         "proxy_get_configuration" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _return_buffer_data: i32, _return_buffer_size: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, _return_buffer_data: i32, _return_buffer_size: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     assert_eq!(
@@ -90,8 +90,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_get_status" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _status_code_ptr: i32,
                  _message_ptr: i32,
                  _message_size: i32|
@@ -114,8 +114,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- Logging ---------------------------------- */
         "proxy_log" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>, level: i32, message_data: i32, message_size: i32| -> i32 {
+                store,
+                |mut caller: Caller<'_, ()>, level: i32, message_data: i32, message_size: i32| -> i32 {
                     // Default Function: retrieve and display log message from proxy-wasm module
                     // Expectation: ensure the log level and the message data are as expected
                     let mem = match caller.get_export("memory") {
@@ -130,32 +130,30 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         }
                     };
 
-                    unsafe {
-                        let data = mem
-                            .data_unchecked()
-                            .get(message_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..message_size as u32 as usize));
+                    let data = mem
+                        .data(&mut caller)
+                        .get(message_data as u32 as usize..)
+                        .and_then(|arr| arr.get(..message_size as u32 as usize));
 
-                        let string_msg =
-                            data.map(|string_msg| std::str::from_utf8(string_msg).unwrap());
-                        let string_msg = match string_msg {
-                            Some(s) => s,
-                            _ => "invalid utf-8 slice",
-                        };
+                    let string_msg =
+                        data.map(|string_msg| std::str::from_utf8(string_msg).unwrap());
+                    let string_msg = match string_msg {
+                        Some(s) => s,
+                        _ => "invalid utf-8 slice",
+                    };
 
-                        EXPECT
-                            .lock()
-                            .unwrap()
-                            .staged
-                            .get_expect_log(level, string_msg);
-                        println!(
-                            "[vm->host] proxy_log(level={}, message_data=\"{}\") status: {:?}",
-                            level,
-                            string_msg,
-                            get_status()
-                        );
-                        // println!("[vm<-host] proxy_log(...) return: {:?}", Status::Ok)
-                    }
+                    EXPECT
+                        .lock()
+                        .unwrap()
+                        .staged
+                        .get_expect_log(level, string_msg);
+                    println!(
+                        "[vm->host] proxy_log(level={}, message_data=\"{}\") status: {:?}",
+                        level,
+                        string_msg,
+                        get_status()
+                    );
+                    // println!("[vm<-host] proxy_log(...) return: {:?}", Status::Ok)
                     assert_ne!(get_status(), ExpectStatus::Failed);
                     set_status(ExpectStatus::Unexpected);
                     return Status::Ok as i32;
@@ -165,8 +163,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_get_log_level" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _level: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, _level: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     println!(
@@ -185,8 +183,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- Timer ---------------------------------- */
         "proxy_set_tick_period_milliseconds" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, period: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, period: i32| -> i32 {
                     // Default Function: receive and store tick period from proxy-wasm module
                     // Expectation: assert received tick period is equal to expected
                     HOST.lock()
@@ -218,8 +216,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- Time ---------------------------------- */
         "proxy_get_current_time_nanoseconds" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>, return_time: i32| -> i32 {
+                store,
+                |mut caller: Caller<'_, ()>, return_time: i32| -> i32 {
                     // Default Function: respond to proxy-wasm module with the current time
                     // Expectation: respond with a pre-set expected time
                     let mem = match caller.get_export("memory") {
@@ -245,7 +243,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     unsafe {
-                        let data = mem.data_unchecked_mut().get_unchecked_mut(
+                        let data = mem.data_mut(&mut caller).get_unchecked_mut(
                             return_time as u32 as usize..return_time as u32 as usize + 8,
                         );
 
@@ -269,8 +267,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- State Accessors ---------------------------------- */
         "proxy_get_property" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _path_data: i32,
                  _path_size: i32,
                  _return_value_data: i32,
@@ -290,8 +288,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_set_property" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _path_data: i32,
                  _path_size: i32,
                  _value_data: i32,
@@ -311,7 +309,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         /* ---------------------------------- Continue/Close/Reply/Route ---------------------------------- */
         "proxy_continue_stream" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 assert_eq!(
@@ -333,7 +331,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_close_stream" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 assert_eq!(
@@ -349,7 +347,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_continue_request" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 assert_eq!(
@@ -371,7 +369,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_continue_response" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 assert_eq!(
@@ -394,8 +392,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_send_local_response" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>,
+                store,
+                |mut caller: Caller<'_, ()>,
                  status_code: i32,
                  _status_code_details_data: i32,
                  _status_code_details_size: i32,
@@ -425,14 +423,14 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         let mut string_body: Option<&str> = None;
                         if body_size > 0 {
                             let body_data_ptr = mem
-                                .data_unchecked()
+                                .data(&caller)
                                 .get(body_data as u32 as usize..)
                                 .and_then(|arr| arr.get(..body_size as u32 as usize));
                             string_body = body_data_ptr
                                 .map(|string_msg| std::str::from_utf8(string_msg).unwrap());
                         }
 
-                        let header_data_ptr = mem.data_unchecked().get_unchecked(
+                        let header_data_ptr = mem.data(&caller).get_unchecked(
                             headers_data as u32 as usize
                                 ..headers_data as u32 as usize + headers_size as u32 as usize,
                         );
@@ -469,7 +467,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_clear_route_cache" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 println!(
@@ -487,8 +485,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- SharedData ---------------------------------- */
         "proxy_get_shared_data" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _key_data: i32,
                  _key_size: i32,
                  _return_value_data: i32,
@@ -506,8 +504,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_set_shared_data" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _key_data: i32,
                  _key_size: i32,
                  _value_data: i32,
@@ -529,8 +527,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- SharedQueue ---------------------------------- */
         "proxy_register_shared_queue" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _name_data: i32, _name_size: i32, _return_id: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, _name_data: i32, _name_size: i32, _return_id: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     println!("[vm->host] proxy_register_shared_queue(name_data, name_size) -> (...) status: {:?}", get_status());
@@ -545,8 +543,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_resolve_shared_queue" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _vm_id_data: i32,
                  _vm_id_size: i32,
                  _name_data: i32,
@@ -567,8 +565,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_dequeue_shared_queue" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _queue_id: i32,
                  _payload_data: i32,
                  _payload_size: i32|
@@ -587,8 +585,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_enqueue_shared_queue" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _queue_id: i32, _value_data: i32, _value_size: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, _queue_id: i32, _value_data: i32, _value_size: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     println!("[vm->host] proxy_enqueue_shared_queue(queue_id, value_data, value_size) status: {:?}", get_status());
@@ -604,8 +602,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- Headers/Trailers/Metadata Maps ---------------------------------- */
         "proxy_get_header_map_size" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _map_type: i32, _map_size: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, _map_type: i32, _map_size: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     println!(
@@ -623,8 +621,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_get_header_map_pairs" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>,
+                store,
+                |mut caller: Caller<'_, ()>,
                  map_type: i32,
                  return_map_data: i32,
                  return_map_size: i32|
@@ -643,7 +641,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     let malloc = match caller.get_export("malloc") {
-                        Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
+                        Some(Extern::Func(func)) => func,
                         _ => {
                             println!(
                                 "Error: proxy_get_header_map_pairs cannot get export \"malloc\""
@@ -664,22 +662,24 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
                     let serial_map_size = serial_map.len();
 
+                    let map_data_add = {
+                        let mut result = [Val::I32(0)];
+                        malloc.call(&mut caller, &[Val::I32(serial_map_size as i32)], &mut result).unwrap();
+                        result[0].i32().unwrap() as u32 as usize
+                    };
+
                     unsafe {
-                        let return_map_size_ptr = mem.data_unchecked_mut().get_unchecked_mut(
-                            return_map_size as u32 as usize..return_map_size as u32 as usize + 4,
-                        );
-
-                        let return_map_data_ptr = mem.data_unchecked_mut().get_unchecked_mut(
-                            return_map_data as u32 as usize..return_map_data as u32 as usize + 4,
-                        );
-
-                        let map_data_add = malloc(serial_map_size as i32).unwrap() as u32 as usize;
                         let map_data_ptr = mem
-                            .data_unchecked_mut()
+                            .data_mut(&mut caller)
                             .get_unchecked_mut(map_data_add..map_data_add + serial_map_size);
                         map_data_ptr.copy_from_slice(&serial_map);
-
+                        let return_map_data_ptr = mem.data_mut(&mut caller).get_unchecked_mut(
+                            return_map_data as u32 as usize..return_map_data as u32 as usize + 4,
+                        );
                         return_map_data_ptr.copy_from_slice(&(map_data_add as u32).to_le_bytes());
+                        let return_map_size_ptr = mem.data_mut(&mut caller).get_unchecked_mut(
+                            return_map_size as u32 as usize..return_map_size as u32 as usize + 4,
+                        );
                         return_map_size_ptr
                             .copy_from_slice(&(serial_map_size as u32).to_le_bytes());
                     }
@@ -698,8 +698,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_set_header_map_pairs" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>, map_type: i32, map_data: i32, map_size: i32| -> i32 {
+                store,
+                |mut caller: Caller<'_, ()>, map_type: i32, map_data: i32, map_size: i32| -> i32 {
                     // Default Function: Reads and sets the according header map as the simulator default for the given map type
                     // Expectation: asserts that the received header map and header map type corresponds to the expected one
                     let mem = match caller.get_export("memory") {
@@ -717,7 +717,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     unsafe {
-                        let header_map_ptr = mem.data_unchecked().get_unchecked(
+                        let header_map_ptr = mem.data(&mut caller).get_unchecked(
                             map_data as u32 as usize..(map_data + map_size) as u32 as usize,
                         );
 
@@ -750,8 +750,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_get_header_map_value" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>,
+                store,
+                |mut caller: Caller<'_, ()>,
                  map_type: i32,
                  key_data: i32,
                  key_size: i32,
@@ -773,7 +773,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     let malloc = match caller.get_export("malloc") {
-                        Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
+                        Some(Extern::Func(func)) => func,
                         _ => {
                             println!(
                                 "Error: proxy_get_header_map_value cannot get export \"malloc\""
@@ -784,47 +784,53 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     unsafe {
-                        let key_data_ptr = mem
-                            .data_unchecked()
-                            .get(key_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..key_size as u32 as usize));
-                        let string_key = key_data_ptr
-                            .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
-                            .unwrap();
+                        let (string_key, string_value) = {
+                            let key_data_ptr = mem
+                                .data(&caller)
+                                .get(key_data as u32 as usize..)
+                                .and_then(|arr| arr.get(..key_size as u32 as usize));
+                            let string_key = key_data_ptr
+                                .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
+                                .unwrap();
 
-                        let string_value = match EXPECT
-                            .lock()
-                            .unwrap()
-                            .staged
-                            .get_expect_get_header_map_value(map_type, string_key)
-                        {
-                            Some(expect_string_value) => expect_string_value,
-                            None => {
-                                match HOST.lock().unwrap().staged.get_header_map_value(map_type, &string_key) {
-                                Some(host_string_value) => host_string_value,
-                                None => panic!("Error: proxy_get_header_map_value | no header map value for key {}", string_key)}
-                            }
+                            let string_value = match EXPECT
+                                .lock()
+                                .unwrap()
+                                .staged
+                                .get_expect_get_header_map_value(map_type, string_key)
+                            {
+                                Some(expect_string_value) => expect_string_value,
+                                None => {
+                                    match HOST.lock().unwrap().staged.get_header_map_value(map_type, &string_key) {
+                                        Some(host_string_value) => host_string_value,
+                                        None => panic!("Error: proxy_get_header_map_value | no header map value for key {}", string_key)}
+                                }
+                            };
+                            (string_key.to_string(), string_value)
                         };
 
-                        let value_data_add =
-                            malloc(string_value.len() as i32).unwrap() as u32 as usize;
+                        let value_data_add = {
+                            let mut result = [Val::I32(0)];
+                            malloc.call(&mut caller, &[Val::I32(string_value.len() as i32)], &mut result).unwrap();
+                            result[0].i32().unwrap() as u32 as usize
+                        };
+
                         let value_data_ptr = mem
-                            .data_unchecked_mut()
+                            .data_mut(&mut caller)
                             .get_unchecked_mut(value_data_add..value_data_add + string_value.len());
                         value_data_ptr.copy_from_slice((&string_value).as_bytes());
 
-                        let return_value_data_ptr = mem.data_unchecked_mut().get_unchecked_mut(
+                        let return_value_data_ptr = mem.data_mut(&mut caller).get_unchecked_mut(
                             return_value_data as u32 as usize
                                 ..return_value_data as u32 as usize + 4,
                         );
+                        return_value_data_ptr
+                            .copy_from_slice(&(value_data_add as u32).to_le_bytes());
 
-                        let return_value_size_ptr = mem.data_unchecked_mut().get_unchecked_mut(
+                        let return_value_size_ptr = mem.data_mut(&mut caller).get_unchecked_mut(
                             return_value_size as u32 as usize
                                 ..return_value_size as u32 as usize + 4,
                         );
-
-                        return_value_data_ptr
-                            .copy_from_slice(&(value_data_add as u32).to_le_bytes());
                         return_value_size_ptr
                             .copy_from_slice(&(string_value.len() as u32).to_le_bytes());
 
@@ -844,8 +850,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_replace_header_map_value" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>,
+                store,
+                |mut caller: Caller<'_, ()>,
                  map_type: i32,
                  key_data: i32,
                  key_size: i32,
@@ -866,41 +872,39 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         }
                     };
 
-                    unsafe {
-                        let key_data_ptr = mem
-                            .data_unchecked()
-                            .get(key_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..key_size as u32 as usize));
-                        let string_key = key_data_ptr
-                            .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
-                            .unwrap();
+                    let key_data_ptr = mem
+                        .data(&caller)
+                        .get(key_data as u32 as usize..)
+                        .and_then(|arr| arr.get(..key_size as u32 as usize));
+                    let string_key = key_data_ptr
+                        .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
+                        .unwrap();
 
-                        let value_data_ptr = mem
-                            .data_unchecked()
-                            .get(value_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..value_size as u32 as usize));
-                        let string_value = value_data_ptr
-                            .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
-                            .unwrap();
+                    let value_data_ptr = mem
+                        .data(&caller)
+                        .get(value_data as u32 as usize..)
+                        .and_then(|arr| arr.get(..value_size as u32 as usize));
+                    let string_value = value_data_ptr
+                        .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
+                        .unwrap();
 
-                        EXPECT
-                            .lock()
-                            .unwrap()
-                            .staged
-                            .get_expect_replace_header_map_value(
-                                map_type,
-                                string_key,
-                                string_value,
-                            );
-                        HOST.lock().unwrap().staged.replace_header_map_value(
+                    EXPECT
+                        .lock()
+                        .unwrap()
+                        .staged
+                        .get_expect_replace_header_map_value(
                             map_type,
                             string_key,
                             string_value,
                         );
-                        println!("[vm->host] proxy_replace_header_map_value(map_type={}, key_data={}, key_size={}, value_data={}, value_size={}) status: {:?}", 
-                            map_type, string_key, string_key.len(), string_value, string_value.len(), get_status()
-                        );
-                    }
+                    HOST.lock().unwrap().staged.replace_header_map_value(
+                        map_type,
+                        string_key,
+                        string_value,
+                    );
+                    println!("[vm->host] proxy_replace_header_map_value(map_type={}, key_data={}, key_size={}, value_data={}, value_size={}) status: {:?}",
+                        map_type, string_key, string_key.len(), string_value, string_value.len(), get_status()
+                    );
                     println!(
                         "[vm<-host] proxy_replace_header_map_value(...) return: {:?}",
                         Status::Ok
@@ -914,8 +918,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_remove_header_map_value" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>, map_type: i32, key_data: i32, key_size: i32| -> i32 {
+                store,
+                |mut caller: Caller<'_, ()>, map_type: i32, key_data: i32, key_size: i32| -> i32 {
                     // Default Function: remove the specified key-value pair in the default host environment if it exists
                     // Expectation: assert that the received key is as expected
                     let mem = match caller.get_export("memory") {
@@ -932,28 +936,26 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         }
                     };
 
-                    unsafe {
-                        let key_data_ptr = mem
-                            .data_unchecked()
-                            .get(key_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..key_size as u32 as usize));
-                        let string_key = key_data_ptr
-                            .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
-                            .unwrap();
+                    let key_data_ptr = mem
+                        .data(&mut caller)
+                        .get(key_data as u32 as usize..)
+                        .and_then(|arr| arr.get(..key_size as u32 as usize));
+                    let string_key = key_data_ptr
+                        .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
+                        .unwrap();
 
-                        EXPECT
-                            .lock()
-                            .unwrap()
-                            .staged
-                            .get_expect_remove_header_map_value(map_type, string_key);
-                        HOST.lock()
-                            .unwrap()
-                            .staged
-                            .remove_header_map_value(map_type, string_key);
-                        println!("[vm->host] proxy_remove_header_map_value(map_type={}, key_data={}, key_size={}) status: {:?}", 
-                            map_type, string_key, string_key.len(), get_status()
-                        );
-                    }
+                    EXPECT
+                        .lock()
+                        .unwrap()
+                        .staged
+                        .get_expect_remove_header_map_value(map_type, string_key);
+                    HOST.lock()
+                        .unwrap()
+                        .staged
+                        .remove_header_map_value(map_type, string_key);
+                    println!("[vm->host] proxy_remove_header_map_value(map_type={}, key_data={}, key_size={}) status: {:?}",
+                        map_type, string_key, string_key.len(), get_status()
+                    );
                     println!(
                         "[vm<-host] proxy_remove_header_map_value(...) return: {:?}",
                         Status::Ok
@@ -967,8 +969,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_add_header_map_value" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>,
+                store,
+                |mut caller: Caller<'_, ()>,
                  map_type: i32,
                  key_data: i32,
                  key_size: i32,
@@ -991,37 +993,35 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                         }
                     };
 
-                    unsafe {
-                        let key_data_ptr = mem
-                            .data_unchecked()
-                            .get(key_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..key_size as u32 as usize));
-                        let string_key = key_data_ptr
-                            .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
-                            .unwrap();
+                    let key_data_ptr = mem
+                        .data(&caller)
+                        .get(key_data as u32 as usize..)
+                        .and_then(|arr| arr.get(..key_size as u32 as usize));
+                    let string_key = key_data_ptr
+                        .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
+                        .unwrap();
 
-                        let value_data_ptr = mem
-                            .data_unchecked()
-                            .get(value_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..value_size as u32 as usize));
-                        let string_value = value_data_ptr
-                            .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
-                            .unwrap();
+                    let value_data_ptr = mem
+                        .data(&caller)
+                        .get(value_data as u32 as usize..)
+                        .and_then(|arr| arr.get(..value_size as u32 as usize));
+                    let string_value = value_data_ptr
+                        .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
+                        .unwrap();
 
-                        EXPECT
-                            .lock()
-                            .unwrap()
-                            .staged
-                            .get_expect_add_header_map_value(map_type, string_key, string_value);
-                        HOST.lock().unwrap().staged.add_header_map_value(
-                            map_type,
-                            string_key,
-                            string_value,
-                        );
-                        println!("[vm->host] proxy_add_header_map_value(map_type={}, key_data={}, key_size={}, value_data={}, value_size={}) status: {:?}", 
-                            map_type, string_key, string_key.len(), string_value, string_value.len(), get_status()
-                        );
-                    }
+                    EXPECT
+                        .lock()
+                        .unwrap()
+                        .staged
+                        .get_expect_add_header_map_value(map_type, string_key, string_value);
+                    HOST.lock().unwrap().staged.add_header_map_value(
+                        map_type,
+                        string_key,
+                        string_value,
+                    );
+                    println!("[vm->host] proxy_add_header_map_value(map_type={}, key_data={}, key_size={}, value_data={}, value_size={}) status: {:?}",
+                        map_type, string_key, string_key.len(), string_value, string_value.len(), get_status()
+                    );
                     println!(
                         "[vm<-host] proxy_add_header_map_value(...) return: {:?}",
                         Status::Ok
@@ -1036,8 +1036,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- Buffer ---------------------------------- */
         "proxy_get_buffer_status" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _buffer_type: i32,
                  _length_ptr: i32,
                  _flags_ptr: i32|
@@ -1059,8 +1059,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_get_buffer_bytes" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>,
+                store,
+                |mut caller: Caller<'_, ()>,
                  buffer_type: i32,
                  start: i32,
                  max_size: i32,
@@ -1079,7 +1079,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     let malloc = match caller.get_export("malloc") {
-                        Some(Extern::Func(func)) => func.get1::<i32, i32>().unwrap(),
+                        Some(Extern::Func(func)) => func,
                         _ => {
                             println!("Error: proxy_get_buffer_bytes cannot get export \"malloc\"");
                             println!("[vm<-host] proxy_get_buffer_bytes(...) -> (return_buffer_data, return_buffer_size) return: {:?}", Status::InternalFailure);
@@ -1115,26 +1115,26 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     unsafe {
-                        let return_buffer_size_ptr = mem.data_unchecked_mut().get_unchecked_mut(
-                            return_buffer_size as u32 as usize
-                                ..return_buffer_size as u32 as usize + 4,
-                        );
-
-                        let return_buffer_data_ptr = mem.data_unchecked_mut().get_unchecked_mut(
-                            return_buffer_data as u32 as usize
-                                ..return_buffer_data as u32 as usize + 4,
-                        );
-
                         // allocate memory and store buffer bytes
-                        let buffer_data_add =
-                            malloc(response_body.len() as i32).unwrap() as u32 as usize;
-                        let buffer_data_ptr = mem.data_unchecked_mut().get_unchecked_mut(
+                        let mut result = [Val::I32(0)];
+                        malloc.call(&mut caller, &[Val::I32(response_body.len() as i32)], &mut result).unwrap();
+                        let buffer_data_add = result[0].i32().unwrap() as u32 as usize;
+
+                        let buffer_data_ptr = mem.data_mut(&mut caller).get_unchecked_mut(
                             buffer_data_add..buffer_data_add + response_body.len(),
                         );
                         buffer_data_ptr.copy_from_slice(&response_body);
 
+                        let return_buffer_size_ptr = mem.data_mut(&mut caller).get_unchecked_mut(
+                            return_buffer_size as u32 as usize
+                                ..return_buffer_size as u32 as usize + 4,
+                        );
                         return_buffer_size_ptr
                             .copy_from_slice(&(response_body.len() as u32).to_le_bytes());
+                        let return_buffer_data_ptr = mem.data_mut(&mut caller).get_unchecked_mut(
+                            return_buffer_data as u32 as usize
+                                ..return_buffer_data as u32 as usize + 4,
+                        );
                         return_buffer_data_ptr
                             .copy_from_slice(&(buffer_data_add as u32).to_le_bytes());
                     }
@@ -1154,8 +1154,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_set_buffer_bytes" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>,
+                store,
+                |mut caller: Caller<'_, ()>,
                  buffer_type: i32,
                  start: i32,
                  size: i32,
@@ -1177,7 +1177,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
                     };
 
                     unsafe {
-                        let buffer_data_ptr = mem.data_unchecked().get_unchecked(
+                        let buffer_data_ptr = mem.data(&mut caller).get_unchecked(
                             buffer_data as u32 as usize
                                 ..(buffer_data + buffer_size) as u32 as usize,
                         );
@@ -1220,8 +1220,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- HTTP ---------------------------------- */
         "proxy_http_call" => {
             Some(Func::wrap(
-                &store,
-                |caller: Caller<'_>,
+                store,
+                |mut caller: Caller<'_, ()>,
                  upstream_data: i32,
                  upstream_size: i32,
                  headers_data: i32,
@@ -1249,64 +1249,68 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
                     // expectation description not implemented yet
                     unsafe {
-                        let upstream_data_ptr = mem
-                            .data_unchecked()
-                            .get(upstream_data as u32 as usize..)
-                            .and_then(|arr| arr.get(..upstream_size as u32 as usize));
-                        let string_upstream = upstream_data_ptr
-                            .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
-                            .unwrap();
+                        let (string_body, deserialized_header, deserialized_trailer,token_id) = {
+                            let upstream_data_ptr = mem
+                                .data(&caller)
+                                .get(upstream_data as u32 as usize..)
+                                .and_then(|arr| arr.get(..upstream_size as u32 as usize));
+                            let string_upstream = upstream_data_ptr
+                                .map(|string_msg| std::str::from_utf8(string_msg).unwrap())
+                                .unwrap();
 
-                        let mut string_body: Option<&str> = None;
-                        if body_size > 0 {
-                            let body_data_ptr = mem
-                                .data_unchecked()
-                                .get(body_data as u32 as usize..)
-                                .and_then(|arr| arr.get(..body_size as u32 as usize));
-                            string_body = body_data_ptr
-                                .map(|string_msg| std::str::from_utf8(string_msg).unwrap());
-                        }
+                            let mut string_body: Option<&str> = None;
+                            if body_size > 0 {
+                                let body_data_ptr = mem
+                                    .data(&caller)
+                                    .get(body_data as u32 as usize..)
+                                    .and_then(|arr| arr.get(..body_size as u32 as usize));
+                                string_body = body_data_ptr
+                                    .map(|string_msg| std::str::from_utf8(string_msg).unwrap());
+                            }
 
-                        let header_data_ptr = mem.data_unchecked().get_unchecked(
-                            headers_data as u32 as usize
-                                ..headers_data as u32 as usize + headers_size as u32 as usize,
-                        );
-                        let deserialized_header = serial_utils::deserialize_map(header_data_ptr);
+                            let header_data_ptr = mem.data(&caller).get_unchecked(
+                                headers_data as u32 as usize
+                                    ..headers_data as u32 as usize + headers_size as u32 as usize,
+                            );
+                            let deserialized_header =
+                                serial_utils::deserialize_map(header_data_ptr);
 
-                        let trailer_data_ptr = mem.data_unchecked().get_unchecked(
-                            trailers_data as u32 as usize
-                                ..trailers_data as u32 as usize + trailers_size as u32 as usize,
-                        );
-                        let deserialized_trailer = serial_utils::deserialize_map(trailer_data_ptr);
-
-                        let token_id = match EXPECT.lock().unwrap().staged.get_expect_http_call(
-                            string_upstream,
-                            header_data_ptr,
-                            string_body,
-                            trailer_data_ptr,
-                            timeout,
-                        ) {
-                            Some(expect_token) => expect_token,
-                            None => 0,
+                            let trailer_data_ptr = mem.data(&caller).get_unchecked(
+                                trailers_data as u32 as usize
+                                    ..trailers_data as u32 as usize + trailers_size as u32 as usize,
+                            );
+                            let deserialized_trailer = serial_utils::deserialize_map(trailer_data_ptr);
+                            let token_id = match EXPECT.lock().unwrap().staged.get_expect_http_call(
+                                string_upstream,
+                                header_data_ptr,
+                                string_body,
+                                trailer_data_ptr,
+                                timeout,
+                            ) {
+                                Some(expect_token) => expect_token,
+                                None => 0,
+                            };
+                            println!(
+                                "[vm->host] proxy_http_call(upstream_data={:?}, upstream_size={}",
+                                string_upstream,
+                                string_upstream.len()
+                            );
+                            (string_body.map(|s| s.to_string()), deserialized_header, deserialized_trailer, token_id)
                         };
 
-                        let return_token_add = mem.data_unchecked_mut().get_unchecked_mut(
+                        let return_token_add = mem.data_mut(&mut caller).get_unchecked_mut(
                             return_token as u32 as usize..return_token as u32 as usize + 4,
                         );
                         return_token_add.copy_from_slice(&token_id.to_le_bytes());
-                        println!(
-                            "[vm->host] proxy_http_call(upstream_data={:?}, upstream_size={}",
-                            string_upstream,
-                            string_upstream.len()
-                        );
+
                         println!(
                             "                           headers_data={:?}, headers_size={}",
                             deserialized_header, headers_size
                         );
+                        let body_len = string_body.as_ref().map_or(0, |data| data.len());
                         println!(
-                            "                           body_data={}, body_size={}",
-                            string_body.unwrap_or("None"),
-                            string_body.map_or(0, |data| data.len())
+                            "                           body_data={}, body_size={body_len}",
+                            string_body.unwrap_or("None".to_string())
                         );
                         println!(
                             "                           trailers_data={:?}, trailers_size={}",
@@ -1332,8 +1336,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- gRPC ---------------------------------- */
         "proxy_grpc_call" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _service_ptr: i32,
                  _service_size: i32,
                  _service_name_ptr: i32,
@@ -1364,8 +1368,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_grpc_stream" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _service_ptr: i32,
                  _service_size: i32,
                  _service_name_ptr: i32,
@@ -1393,8 +1397,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_grpc_cancel" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _token: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, _token: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     println!(
@@ -1412,8 +1416,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_grpc_close" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, _token: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, _token: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     println!(
@@ -1431,8 +1435,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         "proxy_grpc_send" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>,
+                store,
+                |_caller: Caller<'_, ()>,
                  _token: i32,
                  _message_ptr: i32,
                  _message_size: i32,
@@ -1455,7 +1459,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
 
         /* ---------------------------------- Metrics ---------------------------------- */
         "proxy_define_metric" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 println!(
@@ -1471,7 +1475,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_increment_metric" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 println!(
@@ -1487,7 +1491,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_record_metric" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 println!(
@@ -1503,7 +1507,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_get_metric" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 println!(
@@ -1521,8 +1525,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         /* ---------------------------------- System ---------------------------------- */
         "proxy_set_effective_context" => {
             Some(Func::wrap(
-                &store,
-                |_caller: Caller<'_>, context_id: i32| -> i32 {
+                store,
+                |_caller: Caller<'_, ()>, context_id: i32| -> i32 {
                     // Default Function:
                     // Expectation:
                     println!(
@@ -1546,7 +1550,7 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_done" => {
-            Some(Func::wrap(&store, |_caller: Caller<'_>| -> i32 {
+            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
                 // Default Function:
                 // Expectation:
                 println!("[vm->host] proxy_done() status: {:?}", get_status());
@@ -1559,8 +1563,8 @@ fn get_hostfunc(store: &Store, _abi_version: AbiVersion, import: &ImportType) ->
         }
 
         "proxy_call_foreign_function" => Some(Func::wrap(
-            &store,
-            |_caller: Caller<'_>,
+            store,
+            |_caller: Caller<'_, ()>,
              _function_name: i32,
              _function_name_size: i32,
              _arguments: i32,
