@@ -40,20 +40,21 @@ pub struct MockSettings {
 
 pub fn mock(mock_settings: MockSettings) -> Result<Tester> {
     // initialize wasm engine and shared cache
-    let store = Store::default();
+    let mut store = Store::<()>::default();
     let module = Module::from_file(store.engine(), &mock_settings.wasm_path)?;
 
     // generate and link host function implementations
     let abi_version = get_abi_version(&module);
     let imports: Arc<Mutex<Vec<Extern>>> = Arc::new(Mutex::new(Vec::new()));
     let (host_settings, expectations): (Arc<Mutex<HostHandle>>, Arc<Mutex<ExpectHandle>>) =
-        generate_import_list(&store, &module, imports.clone());
-    let instance = Instance::new(&store, &module, &(*imports).lock().unwrap()[..])?;
+        generate_import_list(&mut store, &module, imports.clone());
+    let instance = Instance::new(&mut store, &module, &(*imports).lock().unwrap()[..])?;
 
     // create mock test proxy-wasm object
     let tester = Tester::new(
         abi_version,
         mock_settings,
+        store,
         instance,
         host_settings,
         expectations,
@@ -104,6 +105,7 @@ enum FunctionType {
 pub struct Tester {
     abi_version: AbiVersion,
     mock_settings: MockSettings,
+    store: Store<()>,
     instance: Instance,
     defaults: Arc<Mutex<HostHandle>>,
     expect: Arc<Mutex<ExpectHandle>>,
@@ -115,16 +117,18 @@ impl Tester {
     fn new(
         abi_version: AbiVersion,
         mock_settings: MockSettings,
+        store: Store<()>,
         instance: Instance,
         host_settings: Arc<Mutex<HostHandle>>,
         expect: Arc<Mutex<ExpectHandle>>,
     ) -> Tester {
         let mut tester = Tester {
-            abi_version: abi_version,
-            mock_settings: mock_settings,
-            instance: instance,
+            abi_version,
+            mock_settings,
+            store,
+            instance,
             defaults: host_settings,
-            expect: expect,
+            expect,
             function_call: vec![],
             function_type: vec![],
         };
@@ -358,30 +362,27 @@ impl Tester {
         let mut return_wasm: Option<i32> = None;
         match self.function_call.remove(0) {
             FunctionCall::Start() => {
-                let _start = self
-                    .instance
-                    .get_func("_start")
-                    .ok_or(anyhow::format_err!(
-                        "Error: failed to find `_start` function export"
-                    ))?
-                    .get0::<()>()?;
                 println!("[host->vm] _start()");
-                _start()?;
+                self.instance
+                    .get_typed_func::<(), ()>(&mut self.store, "_start")
+                    .or(Err(anyhow::format_err!(
+                        "Error: failed to find `_start` function export"
+                    )))?
+                    .call(&mut self.store, ())?;
             }
 
             FunctionCall::ProxyOnVmStart(context_id, vm_configuration_size) => {
-                let proxy_on_vm_start = self
-                    .instance
-                    .get_func("proxy_on_vm_start")
-                    .ok_or(anyhow::format_err!(
-                        "Error: failed to find `proxy_on_vm_start` function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
                 println!(
                     "[host->vm] proxy_on_vm_start(context_id={}, vm_configuration_size={})",
                     context_id, vm_configuration_size
                 );
-                let success = proxy_on_vm_start(context_id, vm_configuration_size)?;
+                let success = self
+                    .instance
+                    .get_typed_func::<(i32, i32), i32>(&mut self.store, "proxy_on_vm_start")
+                    .or(Err(anyhow::format_err!(
+                        "Error: failed to find `proxy_on_vm_start` function export"
+                    )))?
+                    .call(&mut self.store, (context_id, vm_configuration_size))?;
                 println!("[host<-vm] proxy_on_vm_start return: success={}", success);
                 return_wasm = Some(success);
             }
@@ -389,16 +390,19 @@ impl Tester {
             FunctionCall::ProxyValidateConfiguration(root_context_id, configuration_size) => {
                 let proxy_validate_configuration = self
                     .instance
-                    .get_func("proxy_validate_configuration")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), i32>(
+                        &mut self.store,
+                        "proxy_validate_configuration",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_validate_configuration` function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_validate_configuration(root_context_id={}, configuration_size={})",
                     root_context_id, configuration_size
                 );
-                let success = proxy_validate_configuration(root_context_id, configuration_size)?;
+                let success = proxy_validate_configuration
+                    .call(&mut self.store, (root_context_id, configuration_size))?;
                 println!(
                     "[host<-vm] proxy_validate_configuration return: success={}",
                     success
@@ -409,16 +413,16 @@ impl Tester {
             FunctionCall::ProxyOnConfigure(context_id, plugin_configuration_size) => {
                 let proxy_on_configure = self
                     .instance
-                    .get_func("proxy_on_configure")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), i32>(&mut self.store, "proxy_on_configure")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_configure' function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_configure(context_id={}, plugin_configuration_size={})",
                     context_id, plugin_configuration_size
                 );
-                let success = proxy_on_configure(context_id, plugin_configuration_size)?;
+                let success = proxy_on_configure
+                    .call(&mut self.store, (context_id, plugin_configuration_size))?;
                 println!("[host<-vm] proxy_on_configure return: success={}", success);
                 return_wasm = Some(success);
             }
@@ -426,27 +430,29 @@ impl Tester {
             FunctionCall::ProxyOnTick(context_id) => {
                 let proxy_on_tick = self
                     .instance
-                    .get_func("proxy_on_tick")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<i32, ()>(&mut self.store, "proxy_on_tick")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_on_tick` function export"
-                    ))?
-                    .get1::<i32, ()>()?;
+                    )))?;
                 println!("[host->vm] proxy_on_tick(context_id={})", context_id);
-                proxy_on_tick(context_id)?;
+                proxy_on_tick.call(&mut self.store, context_id)?;
             }
 
             FunctionCall::ProxyOnForeignFunction(root_context_id, function_id, data_size) => {
                 assert_eq!(self.abi_version, AbiVersion::ProxyAbiVersion0_2_0);
                 let proxy_on_foreign_function = self
                     .instance
-                    .get_func("proxy_on_foreign_function")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), i32>(
+                        &mut self.store,
+                        "proxy_on_foreign_function",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_foreign_function' function export"
-                    ))?
-                    .get3::<i32, i32, i32, i32>()?;
-                println!("[host->vm] proxy_on_foreign_function(root_context_id={}, function_id={}, data_size={})", 
+                    )))?;
+                println!("[host->vm] proxy_on_foreign_function(root_context_id={}, function_id={}, data_size={})",
                     root_context_id, function_id, data_size);
-                let action = proxy_on_foreign_function(root_context_id, function_id, data_size)?;
+                let action = proxy_on_foreign_function
+                    .call(&mut self.store, (root_context_id, function_id, data_size))?;
                 println!(
                     "[host<-vm] proxy_on_foreign_function return: action={}",
                     action
@@ -457,47 +463,45 @@ impl Tester {
             FunctionCall::ProxyOnQueueReady(context_id, queue_id) => {
                 let proxy_on_queue_ready = self
                     .instance
-                    .get_func("proxy_on_queue_ready")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), ()>(&mut self.store, "proxy_on_queue_ready")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_queue_ready' function export"
-                    ))?
-                    .get2::<i32, i32, ()>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_queue_ready(context_id={}, queue_id={})",
                     context_id, queue_id
                 );
-                proxy_on_queue_ready(context_id, queue_id)?;
+                proxy_on_queue_ready.call(&mut self.store, (context_id, queue_id))?;
             }
 
             // Stream calls
             FunctionCall::ProxyOnContextCreate(root_context_id, parent_context_id) => {
                 let proxy_on_context_create = self
                     .instance
-                    .get_func("proxy_on_context_create")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), ()>(&mut self.store, "proxy_on_context_create")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_on_context_create` function export"
-                    ))?
-                    .get2::<i32, i32, ()>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_context_create(root_context_id={}, parent_context_id={})",
                     root_context_id, parent_context_id
                 );
-                proxy_on_context_create(root_context_id, parent_context_id)?;
+                proxy_on_context_create
+                    .call(&mut self.store, (root_context_id, parent_context_id))?;
             }
 
             FunctionCall::ProxyOnNewConnection(context_id) => {
                 let proxy_on_new_connection = self
                     .instance
-                    .get_func("proxy_on_new_connection")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<i32, i32>(&mut self.store, "proxy_on_new_connection")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_new_connection' function export"
-                    ))?
-                    .get1::<i32, i32>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_new_connection(context_id={})",
                     context_id
                 );
-                let action = proxy_on_new_connection(context_id)?;
+                let action = proxy_on_new_connection.call(&mut self.store, context_id)?;
                 println!(
                     "[host<-vm] proxy_on_new_connection return: action={}",
                     action
@@ -508,16 +512,21 @@ impl Tester {
             FunctionCall::ProxyOnDownstreamData(context_id, data_size, end_of_stream) => {
                 let proxy_on_downstream_data = self
                     .instance
-                    .get_func("proxy_on_downstream_data")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), i32>(
+                        &mut self.store,
+                        "proxy_on_downstream_data",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_downstream_data' function export"
-                    ))?
-                    .get3::<i32, i32, i32, i32>()?;
+                    )))?;
                 println!(
                         "[host->vm] proxy_on_downstream_data(context_id={}, data_size={}, end_of_stream={})",
                         context_id, data_size, end_of_stream
                     );
-                let action = proxy_on_downstream_data(context_id, data_size, end_of_stream as i32)?;
+                let action = proxy_on_downstream_data.call(
+                    &mut self.store,
+                    (context_id, data_size, end_of_stream as i32),
+                )?;
                 println!(
                     "[host<-vm] proxy_on_downstream_data return: action={}",
                     action
@@ -528,31 +537,36 @@ impl Tester {
             FunctionCall::ProxyOnDownstreamConnectionClose(context_id, peer_type) => {
                 let proxy_on_downstream_connection_close = self
                     .instance
-                    .get_func("proxy_on_downstream_connection_close")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), ()>(&mut self.store, "proxy_on_downstream_connection_close")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_downstream_connection_close' function export"
-                    ))?
-                    .get2::<i32, i32, ()>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_downstream_connection_close(context_id={}, peer_data={})",
                     context_id, peer_type as i32
                 );
-                proxy_on_downstream_connection_close(context_id, peer_type)?;
+                proxy_on_downstream_connection_close
+                    .call(&mut self.store, (context_id, peer_type))?;
             }
 
             FunctionCall::ProxyOnUpstreamData(context_id, data_size, end_of_stream) => {
                 let proxy_on_upstream_data = self
                     .instance
-                    .get_func("proxy_on_upstream_data")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), i32>(
+                        &mut self.store,
+                        "proxy_on_upstream_data",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_upstream_data' function export"
-                    ))?
-                    .get3::<i32, i32, i32, i32>()?;
+                    )))?;
                 println!(
                         "[host->vm] proxy_on_upstream_data(context_id={}, data_size={}, end_of_stream={})",
                         context_id, data_size, end_of_stream
                     );
-                let action = proxy_on_upstream_data(context_id, data_size, end_of_stream as i32)?;
+                let action = proxy_on_upstream_data.call(
+                    &mut self.store,
+                    (context_id, data_size, end_of_stream as i32),
+                )?;
                 println!(
                     "[host<-vm] proxy_on_upstream_data return: action={}",
                     action
@@ -563,39 +577,54 @@ impl Tester {
             FunctionCall::ProxyOnUpstreamConnectionClose(context_id, peer_type) => {
                 let proxy_on_upstream_connection_close = self
                     .instance
-                    .get_func("proxy_on_upstream_connection_close")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), ()>(
+                        &mut self.store,
+                        "proxy_on_upstream_connection_close",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_upstream_connection_close' function export"
-                    ))?
-                    .get2::<i32, i32, ()>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_upstream_connection_close(context_id={}, peer_data={})",
                     context_id, peer_type as i32
                 );
-                proxy_on_upstream_connection_close(context_id, peer_type)?;
+                proxy_on_upstream_connection_close
+                    .call(&mut self.store, (context_id, peer_type))?;
             }
 
             FunctionCall::ProxyOnRequestHeaders(context_id, num_headers, end_of_stream) => {
-                let proxy_on_request_headers = self
-                    .instance
-                    .get_func("proxy_on_request_headers")
-                    .ok_or(anyhow::format_err!(
-                    "Error: failed to find `proxy_on_request_headers` function export"
-                ))?;
                 println!(
                     "[host->vm] proxy_on_request_headers(context_id={}, num_headers={}, end_of_stream={})",
                     context_id, num_headers, end_of_stream
                 );
                 let action = match self.abi_version {
                     AbiVersion::ProxyAbiVersion0_1_0 => {
-                        proxy_on_request_headers.get2::<i32, i32, i32>()?(context_id, num_headers)?
+                        let proxy_on_request_headers = self
+                            .instance
+                            .get_typed_func::<(i32, i32), i32>(
+                                &mut self.store,
+                                "proxy_on_request_headers",
+                            )
+                            .or(Err(anyhow::format_err!(
+                                "Error: failed to find `proxy_on_request_headers` function export"
+                            )))?;
+                        proxy_on_request_headers.call(&mut self.store, (context_id, num_headers))?
                     }
-                    AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_request_headers
-                        .get3::<i32, i32, i32, i32>()?(
-                        context_id,
-                        num_headers,
-                        end_of_stream as i32,
-                    )?,
+                    AbiVersion::ProxyAbiVersion0_2_0 => {
+                        let proxy_on_request_headers = self
+                            .instance
+                            .get_typed_func::<(i32, i32, i32), i32>(
+                                &mut self.store,
+                                "proxy_on_request_headers",
+                            )
+                            .or(Err(anyhow::format_err!(
+                                "Error: failed to find `proxy_on_request_headers` function export"
+                            )))?;
+                        proxy_on_request_headers.call(
+                            &mut self.store,
+                            (context_id, num_headers, end_of_stream as i32),
+                        )?
+                    }
                     _ => panic!(
                         "Error: proxy_on_request_headers not supported for {:?}",
                         self.abi_version
@@ -612,16 +641,21 @@ impl Tester {
             FunctionCall::ProxyOnRequestBody(context_id, body_size, end_of_stream) => {
                 let proxy_on_request_body = self
                     .instance
-                    .get_func("proxy_on_request_body")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), i32>(
+                        &mut self.store,
+                        "proxy_on_request_body",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_request_body' function export"
-                    ))?
-                    .get3::<i32, i32, i32, i32>()?;
+                    )))?;
                 println!(
                         "[host->vm] proxy_on_request_body(context_id={}, body_size={}, end_of_stream={})",
                         context_id, body_size, end_of_stream
                     );
-                let action = proxy_on_request_body(context_id, body_size, end_of_stream as i32)?;
+                let action = proxy_on_request_body.call(
+                    &mut self.store,
+                    (context_id, body_size, end_of_stream as i32),
+                )?;
                 println!("[host<-vm] proxy_on_request_body return: action={}", action);
                 return_wasm = Some(action);
             }
@@ -629,16 +663,16 @@ impl Tester {
             FunctionCall::ProxyOnRequestTrailers(context_id, num_trailers) => {
                 let proxy_on_request_trailers = self
                     .instance
-                    .get_func("proxy_on_request_trailers")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), i32>(&mut self.store, "proxy_on_request_trailers")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_on_request_trailers` function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_request_trailers(context_id={}, num_trailers={})",
                     context_id, num_trailers
                 );
-                let action = proxy_on_request_trailers(context_id, num_trailers)?;
+                let action =
+                    proxy_on_request_trailers.call(&mut self.store, (context_id, num_trailers))?;
                 println!(
                     "[host<-vm] proxy_on_request_trailers return: action={}",
                     action
@@ -649,16 +683,16 @@ impl Tester {
             FunctionCall::ProxyOnRequestMetadata(context_id, nelements) => {
                 let proxy_on_request_metadata = self
                     .instance
-                    .get_func("proxy_on_request_metadata")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), i32>(&mut self.store, "proxy_on_request_metadata")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_on_request_metadata` function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_request_metadata(context_id={}, nelements={})",
                     context_id, nelements
                 );
-                let action = proxy_on_request_metadata(context_id, nelements)?;
+                let action =
+                    proxy_on_request_metadata.call(&mut self.store, (context_id, nelements))?;
                 println!(
                     "[host<-vm] proxy_on_request_metadata return: action={}",
                     action
@@ -667,26 +701,39 @@ impl Tester {
             }
 
             FunctionCall::ProxyOnResponseHeaders(context_id, num_headers, end_of_stream) => {
-                let proxy_on_response_headers = self
-                    .instance
-                    .get_func("proxy_on_response_headers")
-                    .ok_or(anyhow::format_err!(
-                        "Error: failed to find `proxy_on_response_headers` function export"
-                    ))?;
                 println!(
                         "[host->vm] proxy_on_response_headers(context_id={}, num_headers={}, end_of_stream={})",
                         context_id, num_headers, end_of_stream
                     );
                 let action = match self.abi_version {
                     AbiVersion::ProxyAbiVersion0_1_0 => {
-                        proxy_on_response_headers.get2::<i32, i32, i32>()?(context_id, num_headers)?
+                        let proxy_on_response_headers = self
+                            .instance
+                            .get_typed_func::<(i32, i32), i32>(
+                                &mut self.store,
+                                "proxy_on_response_headers",
+                            )
+                            .or(Err(anyhow::format_err!(
+                                "Error: failed to find `proxy_on_response_headers` function export"
+                            )))?;
+                        proxy_on_response_headers
+                            .call(&mut self.store, (context_id, num_headers))?
                     }
-                    AbiVersion::ProxyAbiVersion0_2_0 => proxy_on_response_headers
-                        .get3::<i32, i32, i32, i32>()?(
-                        context_id,
-                        num_headers,
-                        end_of_stream as i32,
-                    )?,
+                    AbiVersion::ProxyAbiVersion0_2_0 => {
+                        let proxy_on_response_headers = self
+                            .instance
+                            .get_typed_func::<(i32, i32, i32), i32>(
+                                &mut self.store,
+                                "proxy_on_response_headers",
+                            )
+                            .or(Err(anyhow::format_err!(
+                                "Error: failed to find `proxy_on_response_headers` function export"
+                            )))?;
+                        proxy_on_response_headers.call(
+                            &mut self.store,
+                            (context_id, num_headers, end_of_stream as i32),
+                        )?
+                    }
                     _ => panic!(
                         "Error: proxy_on_response_headers not supported for {:?}",
                         self.abi_version
@@ -702,16 +749,21 @@ impl Tester {
             FunctionCall::ProxyOnResponseBody(context_id, body_size, end_of_stream) => {
                 let proxy_on_response_body = self
                     .instance
-                    .get_func("proxy_on_response_body")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), i32>(
+                        &mut self.store,
+                        "proxy_on_response_body",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_response_body' function export"
-                    ))?
-                    .get3::<i32, i32, i32, i32>()?;
+                    )))?;
                 println!(
                         "[host->vm] proxy_on_response_body(context_id={}, body_size={}, end_of_stream={})",
                         context_id, body_size, end_of_stream
                     );
-                let action = proxy_on_response_body(context_id, body_size, end_of_stream as i32)?;
+                let action = proxy_on_response_body.call(
+                    &mut self.store,
+                    (context_id, body_size, end_of_stream as i32),
+                )?;
                 println!("[host<-vm] function return: action -> {}", action);
                 return_wasm = Some(action);
             }
@@ -719,16 +771,19 @@ impl Tester {
             FunctionCall::ProxyOnResponseTrailers(context_id, num_trailers) => {
                 let proxy_on_response_trailers = self
                     .instance
-                    .get_func("proxy_on_response_trailers")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), i32>(
+                        &mut self.store,
+                        "proxy_on_response_trailers",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_on_response_trailers` function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_response_trailers(context_id={}, num_trailers={})",
                     context_id, num_trailers
                 );
-                let action = proxy_on_response_trailers(context_id, num_trailers)?;
+                let action =
+                    proxy_on_response_trailers.call(&mut self.store, (context_id, num_trailers))?;
                 println!(
                     "[host<-vm] proxy_on_response_body return: action={}",
                     action
@@ -739,16 +794,19 @@ impl Tester {
             FunctionCall::ProxyOnResponseMetadata(context_id, nelements) => {
                 let proxy_on_response_metadata = self
                     .instance
-                    .get_func("proxy_on_response_metadata")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32), i32>(
+                        &mut self.store,
+                        "proxy_on_response_metadata",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_on_response_metadata` function export"
-                    ))?
-                    .get2::<i32, i32, i32>()?;
+                    )))?;
                 println!(
                     "[host->vm] call_proxy_on_response_metadata(context_id={}, nelements={})",
                     context_id, nelements
                 );
-                let action = proxy_on_response_metadata(context_id, nelements)?;
+                let action =
+                    proxy_on_response_metadata.call(&mut self.store, (context_id, nelements))?;
                 println!(
                     "[host<-vm] proxy_on_response_metadata return: action={}",
                     action
@@ -766,11 +824,13 @@ impl Tester {
             ) => {
                 let proxy_on_http_call_response = self
                     .instance
-                    .get_func("proxy_on_http_call_response")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32, i32, i32), ()>(
+                        &mut self.store,
+                        "proxy_on_http_call_response",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_on_http_call_response` function export"
-                    ))?
-                    .get5::<i32, i32, i32, i32, i32, ()>()?;
+                    )))?;
                 println!(
                         "[host->vm] proxy_on_http_call_response(context_id={}, callout_id={}, num_headers={}",
                         context_id, callout_id, num_headers
@@ -779,83 +839,80 @@ impl Tester {
                     "                                       body_size={}, num_trailers={})",
                     body_size, num_trailers
                 );
-                proxy_on_http_call_response(
-                    context_id,
-                    callout_id,
-                    num_headers,
-                    body_size,
-                    num_trailers,
+                proxy_on_http_call_response.call(
+                    &mut self.store,
+                    (context_id, callout_id, num_headers, body_size, num_trailers),
                 )?;
             }
 
             FunctionCall::ProxyOnGrpcReceiveInitialMetadata(context_id, token, headers) => {
                 let proxy_on_grpc_receive_initial_metadata = self
                     .instance
-                    .get_func("proxy_on_grpc_receive_initial_metadata")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), ()>(&mut self.store, "proxy_on_grpc_receive_initial_metadata")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_grpc_receive_initial_metadata' function export"
-                    ))?
-                    .get3::<i32, i32, i32, ()>()?;
+                    )))?;
                 println!("[host->vm] proxy_on_grpc_receive_initial_metadata(context_id={}, token={}, headers={})", context_id, token, headers);
-                proxy_on_grpc_receive_initial_metadata(context_id, token, headers)?;
+                proxy_on_grpc_receive_initial_metadata
+                    .call(&mut self.store, (context_id, token, headers))?;
             }
 
             FunctionCall::ProxyOnGrpcReceiveTrailingMetadata(context_id, token, trailers) => {
                 let proxy_on_grpc_trailing_metadata = self
                     .instance
-                    .get_func("proxy_on_grpc_receive_trailing_metadata")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), ()>(
+                        &mut self.store,
+                        "proxy_on_grpc_receive_trailing_metadata",
+                    )
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_grpc_trailing_metadata' function export"
-                    ))?
-                    .get3::<i32, i32, i32, ()>()?;
+                    )))?;
                 println!(
                         "[host->vm] proxy_on_grpc_receive_trailing_metadata(context_id={}, token={}, trailers={})",
                         context_id, token, trailers
                     );
-                proxy_on_grpc_trailing_metadata(context_id, token, trailers)?;
+                proxy_on_grpc_trailing_metadata
+                    .call(&mut self.store, (context_id, token, trailers))?;
             }
 
             FunctionCall::ProxyOnGrpcReceive(context_id, token, response_size) => {
                 let proxy_on_grpc_receive = self
                     .instance
-                    .get_func("proxy_on_grpc_receive")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), ()>(&mut self.store, "proxy_on_grpc_receive")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_grpc_receive' function export"
-                    ))?
-                    .get3::<i32, i32, i32, ()>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_grpc_receive(context_id={}, token={}, response_size={})",
                     context_id, token, response_size
                 );
-                proxy_on_grpc_receive(context_id, token, response_size)?;
+                proxy_on_grpc_receive.call(&mut self.store, (context_id, token, response_size))?;
             }
 
             FunctionCall::ProxyOnGrpcClose(context_id, token, status_code) => {
                 let proxy_on_grpc_close = self
                     .instance
-                    .get_func("proxy_on_grpc_close")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<(i32, i32, i32), ()>(&mut self.store, "proxy_on_grpc_close")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_grpc_close' function export"
-                    ))?
-                    .get3::<i32, i32, i32, ()>()?;
+                    )))?;
                 println!(
                     "[host->vm] proxy_on_grpc_close(context_id={}, token={}, status_code={})",
                     context_id, token, status_code
                 );
-                proxy_on_grpc_close(context_id, token, status_code)?;
+                proxy_on_grpc_close.call(&mut self.store, (context_id, token, status_code))?;
             }
 
             // The stream/vm has completed
             FunctionCall::ProxyOnDone(context_id) => {
                 let proxy_on_done = self
                     .instance
-                    .get_func("proxy_on_done")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<i32, i32>(&mut self.store, "proxy_on_done")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_done' function export"
-                    ))?
-                    .get1::<i32, i32>()?;
+                    )))?;
                 println!("[host->vm] proxy_on_done(context_id={})", context_id);
-                let is_done = proxy_on_done(context_id)?;
+                let is_done = proxy_on_done.call(&mut self.store, context_id)?;
                 println!("[host<-vm] proxy_on_done return: is_done={}", is_done);
                 return_wasm = Some(is_done);
             }
@@ -863,25 +920,23 @@ impl Tester {
             FunctionCall::ProxyOnLog(context_id) => {
                 let proxy_on_log = self
                     .instance
-                    .get_func("proxy_on_log")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<i32, ()>(&mut self.store, "proxy_on_log")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find `proxy_on_log` function export"
-                    ))?
-                    .get1::<i32, ()>()?;
+                    )))?;
                 println!("[host->vm] proxy_on_log(context_id={})", context_id);
-                proxy_on_log(context_id)?;
+                proxy_on_log.call(&mut self.store, context_id)?;
             }
 
             FunctionCall::ProxyOnDelete(context_id) => {
                 let proxy_on_delete = self
                     .instance
-                    .get_func("proxy_on_delete")
-                    .ok_or(anyhow::format_err!(
+                    .get_typed_func::<i32, ()>(&mut self.store, "proxy_on_delete")
+                    .or(Err(anyhow::format_err!(
                         "Error: failed to find 'proxy_on_delete' function export"
-                    ))?
-                    .get1::<i32, ()>()?;
+                    )))?;
                 println!("[host->vm] proxy_on_delete(context_id={})", context_id);
-                proxy_on_delete(context_id)?;
+                proxy_on_delete.call(&mut self.store, context_id)?;
             }
         }
 
