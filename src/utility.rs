@@ -16,7 +16,7 @@ use anyhow::Result;
 use wasmtime::*;
 
 pub fn print_boundary(wasm_file: &str) -> Result<()> {
-    let store = Store::default();
+    let store: Store<()> = Store::default();
     let module = Module::from_file(store.engine(), wasm_file)?;
     print_imports(&module);
     print_exports(&module);
