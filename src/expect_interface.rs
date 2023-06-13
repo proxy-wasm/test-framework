@@ -51,7 +51,7 @@ impl<'a> ExpectGetBufferBytes<'a> {
         }
     }
 
-    pub fn returning(&mut self, buffer_data: Option<&str>) -> &mut Tester {
+    pub fn returning(&mut self, buffer_data: Option<&[u8]>) -> &mut Tester {
         self.tester
             .get_expect_handle()
             .staged
@@ -144,6 +144,51 @@ impl<'a> ExpectHttpCall<'a> {
             self.headers.take().unwrap(),
             self.body,
             self.trailers.take().unwrap(),
+            self.timeout,
+            token_id,
+        );
+        self.tester
+    }
+}
+
+pub struct ExpectGrpcCall<'a> {
+    tester: &'a mut Tester,
+    service: Option<&'a str>,
+    service_name: Option<&'a str>,
+    method_name: Option<&'a str>,
+    initial_metadata: Option<&'a [u8]>,
+    request: Option<&'a [u8]>,
+    timeout: Option<u64>,
+}
+
+impl<'a> ExpectGrpcCall<'a> {
+    pub fn expecting(
+        tester: &'a mut Tester,
+        service: Option<&'a str>,
+        service_name: Option<&'a str>,
+        method_name: Option<&'a str>,
+        initial_metadata: Option<&'a [u8]>,
+        request: Option<&'a [u8]>,
+        timeout: Option<u64>,
+    ) -> Self {
+        Self {
+            tester,
+            service,
+            service_name,
+            method_name,
+            initial_metadata,
+            request,
+            timeout,
+        }
+    }
+
+    pub fn returning(&mut self, token_id: Option<u32>) -> &mut Tester {
+        self.tester.get_expect_handle().staged.set_expect_grpc_call(
+            self.service,
+            self.service_name,
+            self.method_name,
+            self.initial_metadata,
+            self.request,
             self.timeout,
             token_id,
         );
