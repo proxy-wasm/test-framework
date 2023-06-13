@@ -294,5 +294,9 @@ pub fn default_buffer_bytes() -> HashMap<i32, Bytes> {
         BufferType::HttpCallResponseBody as i32,
         "default_call_response_body".as_bytes().to_vec(),
     );
+    default_bytes.insert(
+        BufferType::GrpcReceiveBuffer as i32,
+        "default_grpc_receive_buffer".as_bytes().to_vec(),
+    );
     default_bytes
 }
