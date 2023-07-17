@@ -139,6 +139,7 @@ jobs:
       with:
         repository: proxy-wasm/proxy-wasm-rust-sdk
         path: proxy-wasm-rust-sdk
+        ref: v0.2.1
 
     - name: Update Rust
       run: |
@@ -174,16 +175,19 @@ jobs:
     - name: Build (Rust SDK examples)
       env:
         RUSTFLAGS: -C link-args=-S -D warnings
-      run: cd proxy-wasm-rust-sdk && cargo build --release --examples --target=wasm32-unknown-unknown && cd ..
+      run: |
+        cd proxy-wasm-rust-sdk/examples/hello_world && cargo build --target wasm32-unknown-unknown --release && cd ../../..
+        cd proxy-wasm-rust-sdk/examples/http_auth_random && cargo build --target wasm32-unknown-unknown --release && cd ../../..
+        cd proxy-wasm-rust-sdk/examples/http_headers && cargo build --target wasm32-unknown-unknown --release && cd ../../..
 
     - name: Test (hello_world)
-      run: target/release/examples/hello_world proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/hello_world.wasm
+      run: target/release/examples/hello_world proxy-wasm-rust-sdk/examples/hello_world/target/wasm32-unknown-unknown/release/proxy_wasm_example_hello_world.wasm
 
     - name: Test (http_auth_random)
-      run: target/release/examples/http_auth_random proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_auth_random.wasm -a
+      run: target/release/examples/http_auth_random proxy-wasm-rust-sdk/examples/http_auth_random/target/wasm32-unknown-unknown/release/proxy_wasm_example_http_auth_random.wasm -a
 
     - name: Test (http_headers)
-      run: target/release/examples/http_headers proxy-wasm-rust-sdk/target/wasm32-unknown-unknown/release/examples/http_headers.wasm -a
+      run: target/release/examples/http_headers proxy-wasm-rust-sdk/examples/http_headers/target/wasm32-unknown-unknown/release/proxy_wasm_example_http_headers.wasm -a
 
   outdated:
     runs-on: ubuntu-latest
