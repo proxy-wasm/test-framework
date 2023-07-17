@@ -40,7 +40,10 @@ fn main() -> Result<()> {
         .call_proxy_on_tick(root_context)
         .expect_get_current_time_nanos()
         .returning(Some(0 * 10u64.pow(9)))
-        .expect_log(Some(LogLevel::Info), Some("It's 1970-01-01 00:00:00 UTC"))
+        .expect_log(
+            Some(LogLevel::Info),
+            Some("It's 1970-01-01 00:00:00 UTC, there is no lucky number."),
+        )
         .execute_and_expect(ReturnType::None)?;
 
     hello_world_test

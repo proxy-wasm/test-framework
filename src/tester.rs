@@ -362,13 +362,25 @@ impl Tester {
         let mut return_wasm: Option<i32> = None;
         match self.function_call.remove(0) {
             FunctionCall::Start() => {
-                println!("[host->vm] _start()");
-                self.instance
-                    .get_typed_func::<(), ()>(&mut self.store, "_start")
+                let (name, func) = self
+                    .instance
+                    .get_typed_func::<(), ()>(&mut self.store, "_initialize")
+                    .map(|func| ("_initialize", func))
+                    .or_else(|_| {
+                        self.instance
+                            .get_typed_func::<(), ()>(&mut self.store, "main")
+                            .map(|func| ("main", func))
+                    })
+                    .or_else(|_| {
+                        self.instance
+                            .get_typed_func::<(), ()>(&mut self.store, "_start")
+                            .map(|func| ("_start", func))
+                    })
                     .or(Err(anyhow::format_err!(
-                        "Error: failed to find `_start` function export"
-                    )))?
-                    .call(&mut self.store, ())?;
+                        "Error: failed to find `_initialize`, `main` or `_start` function export"
+                    )))?;
+                println!("[host->vm] {name}()");
+                func.call(&mut self.store, ())?;
             }
 
             FunctionCall::ProxyOnVmStart(context_id, vm_configuration_size) => {
