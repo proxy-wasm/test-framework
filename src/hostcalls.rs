@@ -281,20 +281,32 @@ fn get_hostfunc(
         "proxy_get_property" => {
             Some(Func::wrap(
                 store,
-                |_caller: Caller<'_, ()>,
-                 _path_data: i32,
-                 _path_size: i32,
-                 _return_value_data: i32,
-                 _return_value_size: i32|
+                |mut caller: Caller<'_, ()>,
+                 path_data: i32,
+                 path_size: i32,
+                 return_value_data: i32,
+                 return_value_size: i32|
                  -> i32 {
+                    print!("[vm->host] proxy_get_property({path_data}, {path_size}, {return_value_data}, {return_value_size})");
+
+                    let mem = match caller.get_export("memory") {
+                        Some(Extern::Memory(mem)) => mem,
+                        _ => {
+                            println!("Error: proxy_get_property cannot get export \"memory\"");
+                            println!("[vm<-host] proxy_get_property(...) -> (return_value_data, return_value_size) return: {:?}", Status::InternalFailure);
+                            return Status::InternalFailure as i32;
+                        }
+                    };
+
                     // Default Function:
                     // Expectation:
                     println!(
                         "[vm->host] proxy_get_property(path_data, path_size) -> (...) status: {:?}",
                         get_status()
                     );
-                    println!("[vm<-host] proxy_get_property(...) -> (return_value_data, return_value_size) return: {:?}", Status::InternalFailure);
-                    return Status::InternalFailure as i32;
+                    println!("[vm<-host] proxy_get_property(...) -> (return_value_data, return_value_size) return: {:?}", Status::Ok);
+                    assert_ne!(get_status(), ExpectStatus::Failed);
+                    return Status::Ok as i32;
                 },
             ))
         }

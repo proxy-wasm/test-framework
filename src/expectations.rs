@@ -96,6 +96,7 @@ pub struct Expect {
         Option<Duration>,
         Option<u32>,
     )>,
+    get_property_value: Vec<(Option<Vec<String>>, Option<Bytes>)>,
 }
 
 impl Expect {
@@ -117,6 +118,7 @@ impl Expect {
             send_local_response: vec![],
             http_call: vec![],
             grpc_call: vec![],
+            get_property_value: vec![],
         }
     }
 
@@ -646,6 +648,43 @@ impl Expect {
                         .unwrap_or(true);
                 set_expect_status(expected);
                 return result;
+            }
+        }
+    }
+
+    pub fn set_expect_get_property(
+        &mut self,
+        path: Option<Vec<&str>>,
+        property_data: Option<&[u8]>,
+    ) {
+        self.expect_count += 1;
+        self.get_property_value.push((
+            path.map(|segments: Vec<&str>| {
+                segments.iter().map(|seg: &&str| seg.to_string()).collect()
+            }),
+            property_data.map(|data| data.to_vec()),
+        ));
+    }
+
+    pub fn get_expect_get_property(&mut self, path: Vec<&str>, property_data: &[u8]) {
+        match self.get_property_value.len() {
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                set_status(ExpectStatus::Unexpected);
+            }
+            _ => {
+                self.expect_count -= 1;
+                let (expected_path, expected_property_data) = self.get_property_value.remove(0);
+                // when expected anything is None, behave as catch all
+                let expected = expected_path
+                    .map(|p: Vec<String>| p == path)
+                    .unwrap_or(true)
+                    && expected_property_data
+                        .map(|data| data == property_data)
+                        .unwrap_or(true);
+                set_expect_status(expected);
             }
         }
     }

@@ -288,6 +288,10 @@ impl Tester {
         )
     }
 
+    pub fn expect_get_property(&mut self, path: Option<Vec<&'static str>>) -> ExpectGetProperty {
+        ExpectGetProperty::expecting(self, path)
+    }
+
     /* ------------------------------------- High-level Expectation Setting ------------------------------------- */
 
     pub fn set_quiet(&mut self, quiet: bool) {

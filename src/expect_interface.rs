@@ -195,3 +195,25 @@ impl<'a> ExpectGrpcCall<'a> {
         self.tester
     }
 }
+
+pub struct ExpectGetProperty<'a> {
+    tester: &'a mut Tester,
+    path: Option<Vec<&'static str>>,
+}
+
+impl<'a> ExpectGetProperty<'a> {
+    pub fn expecting(
+        tester: &'a mut Tester,
+        path: Option<Vec<&'static str>>,
+    ) -> ExpectGetProperty<'a> {
+        ExpectGetProperty { tester, path }
+    }
+
+    pub fn returning(&mut self, property_data: Option<&[u8]>) -> &mut Tester {
+        self.tester
+            .get_expect_handle()
+            .staged
+            .set_expect_get_property(self.path.clone(), property_data);
+        self.tester
+    }
+}
