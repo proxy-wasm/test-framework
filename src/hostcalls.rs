@@ -41,7 +41,9 @@ pub fn get_status() -> ExpectStatus {
 pub fn get_abi_version(module: &Module) -> AbiVersion {
     if module.get_export("proxy_abi_version_0_1_0").is_some() {
         AbiVersion::ProxyAbiVersion0_1_0
-    } else if module.get_export("proxy_abi_version_0_2_0").is_some() {
+    } else if module.get_export("proxy_abi_version_0_2_0").is_some()
+        || module.get_export("proxy_abi_version_0_2_1").is_some()
+    {
         AbiVersion::ProxyAbiVersion0_2_0
     } else {
         panic!("Error: test-framework does not support proxy-wasm modules of this abi version");
@@ -320,41 +322,53 @@ fn get_hostfunc(
 
         /* ---------------------------------- Continue/Close/Reply/Route ---------------------------------- */
         "proxy_continue_stream" => {
-            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
-                // Default Function:
-                // Expectation:
-                assert_eq!(
-                    HOST.lock().unwrap().staged.get_abi_version(),
-                    AbiVersion::ProxyAbiVersion0_2_0
-                );
-                println!(
-                    "[vm->host] proxy_continue_stream() status: {:?}",
-                    get_status()
-                );
-                println!(
-                    "[vm<-host] proxy_continue_stream() return: {:?}",
-                    Status::Ok
-                );
-                assert_ne!(get_status(), ExpectStatus::Failed);
-                set_status(ExpectStatus::Unexpected);
-                return Status::Ok as i32;
-            }))
+            Some(Func::wrap(
+                store,
+                |_caller: Caller<'_, ()>, stream_type: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    assert_eq!(
+                        HOST.lock().unwrap().staged.get_abi_version(),
+                        AbiVersion::ProxyAbiVersion0_2_0
+                    );
+                    println!(
+                        "[vm->host] proxy_continue_stream(stream_type={stream_type}) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_continue_stream(...) return: {:?}",
+                        Status::Ok
+                    );
+                    assert_ne!(get_status(), ExpectStatus::Failed);
+                    set_status(ExpectStatus::Unexpected);
+                    return Status::Ok as i32;
+                },
+            ))
         }
 
         "proxy_close_stream" => {
-            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
-                // Default Function:
-                // Expectation:
-                assert_eq!(
-                    HOST.lock().unwrap().staged.get_abi_version(),
-                    AbiVersion::ProxyAbiVersion0_2_0
-                );
-                println!("[vm->host] proxy_close_stream() status: {:?}", get_status());
-                println!("[vm<-host] proxy_close_stream() return: {:?}", Status::Ok);
-                assert_ne!(get_status(), ExpectStatus::Failed);
-                set_status(ExpectStatus::Unexpected);
-                return Status::Ok as i32;
-            }))
+            Some(Func::wrap(
+                store,
+                |_caller: Caller<'_, ()>, stream_type: i32| -> i32 {
+                    // Default Function:
+                    // Expectation:
+                    assert_eq!(
+                        HOST.lock().unwrap().staged.get_abi_version(),
+                        AbiVersion::ProxyAbiVersion0_2_0
+                    );
+                    println!(
+                        "[vm->host] proxy_close_stream(stream_type={stream_type}) status: {:?}",
+                        get_status()
+                    );
+                    println!(
+                        "[vm<-host] proxy_close_stream(...) return: {:?}",
+                        Status::Ok
+                    );
+                    assert_ne!(get_status(), ExpectStatus::Failed);
+                    set_status(ExpectStatus::Unexpected);
+                    return Status::Ok as i32;
+                },
+            ))
         }
 
         "proxy_continue_request" => {
