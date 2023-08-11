@@ -55,7 +55,7 @@ fn main() -> Result<()> {
     http_auth_random
         .call_proxy_on_http_call_response(http_context, 0, 0, buffer_data.len() as i32, 0)
         .expect_get_buffer_bytes(Some(BufferType::HttpCallResponseBody))
-        .returning(Some(buffer_data))
+        .returning(Some(buffer_data.as_bytes()))
         .expect_send_local_response(
             Some(403),
             Some("Access forbidden.\n"),
