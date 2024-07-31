@@ -46,7 +46,7 @@ fn main() -> Result<()> {
             ]),
             None,
             Some(vec![]),
-            Some(5 * 10u64.pow(3)),
+            Some(1 * 10u64.pow(3)),
         )
         .returning(Some(0))
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
