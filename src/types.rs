@@ -88,6 +88,9 @@ pub enum BufferType {
     DownstreamData = 2,
     UpstreamData = 3,
     HttpCallResponseBody = 4,
+    GrpcReceiveBuffer = 5,
+    VmConfiguration = 6,
+    PluginConfiguration = 7,
 }
 
 #[repr(u32)]
