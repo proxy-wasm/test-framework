@@ -139,7 +139,7 @@ jobs:
       with:
         repository: proxy-wasm/proxy-wasm-rust-sdk
         path: proxy-wasm-rust-sdk
-        ref: v0.2.1
+        ref: v0.2.2
 
     - name: Update Rust
       run: |
