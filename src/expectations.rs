@@ -41,19 +41,20 @@ impl ExpectHandle {
         self.staged = Expect::new(allow_unexpected);
     }
 
-    pub fn assert_stage(&self) {
+    pub fn assert_stage(&self) -> Option<String> {
         if self.staged.expect_count > 0 {
-            panic!(
+            return Some(format!(
                 "Error: failed to consume all expectations - total remaining: {}",
                 self.staged.expect_count
-            );
+            ));
         } else if self.staged.expect_count < 0 {
-            panic!(
+            return Some(format!(
                 "Error: expectations failed to account for all host calls by {} \n\
             if this is intended, please use --allow-unexpected (-a) mode",
                 -1 * self.staged.expect_count
-            );
+            ));
         }
+        None
     }
 
     pub fn print_staged(&self) {
@@ -86,6 +87,15 @@ pub struct Expect {
         Option<Duration>,
         Option<u32>,
     )>,
+    grpc_call: Vec<(
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<Bytes>,
+        Option<Bytes>,
+        Option<Duration>,
+        Option<u32>,
+    )>,
 }
 
 impl Expect {
@@ -106,6 +116,7 @@ impl Expect {
             add_header_map_value: vec![],
             send_local_response: vec![],
             http_call: vec![],
+            grpc_call: vec![],
         }
     }
 
@@ -190,13 +201,11 @@ impl Expect {
     pub fn set_expect_get_buffer_bytes(
         &mut self,
         buffer_type: Option<i32>,
-        buffer_data: Option<&str>,
+        buffer_data: Option<&[u8]>,
     ) {
         self.expect_count += 1;
-        self.get_buffer_bytes.push((
-            buffer_type,
-            buffer_data.map(|data| data.as_bytes().to_vec()),
-        ));
+        self.get_buffer_bytes
+            .push((buffer_type, buffer_data.map(|data| data.to_vec())));
     }
 
     pub fn get_expect_get_buffer_bytes(&mut self, buffer_type: i32) -> Option<Bytes> {
@@ -568,6 +577,75 @@ impl Expect {
                             .unwrap_or(timeout);
                 set_expect_status(expect_status);
                 http_call_tuple.5
+            }
+        }
+    }
+
+    pub fn set_expect_grpc_call(
+        &mut self,
+        service: Option<&str>,
+        service_name: Option<&str>,
+        method_name: Option<&str>,
+        initial_metadata: Option<&[u8]>,
+        request: Option<&[u8]>,
+        timeout: Option<u64>,
+        token_id: Option<u32>,
+    ) {
+        self.expect_count += 1;
+        self.grpc_call.push((
+            service.map(ToString::to_string),
+            service_name.map(ToString::to_string),
+            method_name.map(ToString::to_string),
+            initial_metadata.map(|s| s.to_vec()),
+            request.map(|s| s.to_vec()),
+            timeout.map(Duration::from_millis),
+            token_id,
+        ));
+    }
+
+    pub fn get_expect_grpc_call(
+        &mut self,
+        service: String,
+        service_name: String,
+        method: String,
+        initial_metadata: &[u8],
+        request: &[u8],
+        timeout: i32,
+    ) -> Option<u32> {
+        match self.grpc_call.len() {
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                set_status(ExpectStatus::Unexpected);
+                None
+            }
+            _ => {
+                self.expect_count -= 1;
+                let (
+                    expected_service,
+                    expected_service_name,
+                    expected_method,
+                    expected_initial_metadata,
+                    expected_request,
+                    expected_duration,
+                    result,
+                ) = self.grpc_call.remove(0);
+
+                let expected = expected_service.map(|e| e == service).unwrap_or(true)
+                    && expected_service_name
+                        .map(|e| e == service_name)
+                        .unwrap_or(true)
+                    && expected_method.map(|e| e == method).unwrap_or(true)
+                    && expected_initial_metadata
+                        .map(|e| e == initial_metadata)
+                        .unwrap_or(true)
+                    && expected_request.map(|e| e == request).unwrap_or(true)
+                    && expected_duration
+                        .map(|e| e.as_millis() as i32 == timeout)
+                        .unwrap_or(true);
+                set_expect_status(expected);
+                return result;
             }
         }
     }
