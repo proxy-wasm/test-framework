@@ -25,7 +25,7 @@ pub struct ExpectGetCurrentTimeNanos<'a> {
 }
 
 impl<'a> ExpectGetCurrentTimeNanos<'a> {
-    pub fn expecting(tester: &'a mut Tester) -> ExpectGetCurrentTimeNanos {
+    pub fn expecting(tester: &'a mut Tester) -> ExpectGetCurrentTimeNanos<'a> {
         ExpectGetCurrentTimeNanos { tester: tester }
     }
 
@@ -44,7 +44,7 @@ pub struct ExpectGetBufferBytes<'a> {
 }
 
 impl<'a> ExpectGetBufferBytes<'a> {
-    pub fn expecting(tester: &'a mut Tester, buffer_type: Option<i32>) -> ExpectGetBufferBytes {
+    pub fn expecting(tester: &'a mut Tester, buffer_type: Option<i32>) -> ExpectGetBufferBytes<'a> {
         ExpectGetBufferBytes {
             tester: tester,
             buffer_type: buffer_type,
@@ -66,7 +66,7 @@ pub struct ExpectGetHeaderMapPairs<'a> {
 }
 
 impl<'a> ExpectGetHeaderMapPairs<'a> {
-    pub fn expecting(tester: &'a mut Tester, map_type: Option<i32>) -> ExpectGetHeaderMapPairs {
+    pub fn expecting(tester: &'a mut Tester, map_type: Option<i32>) -> ExpectGetHeaderMapPairs<'a> {
         ExpectGetHeaderMapPairs {
             tester: tester,
             map_type: map_type,

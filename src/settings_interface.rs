@@ -20,7 +20,7 @@ pub struct DefaultBufferBytes<'a> {
 }
 
 impl<'a> DefaultBufferBytes<'a> {
-    pub fn expecting(tester: &'a mut Tester, buffer_type: i32) -> DefaultBufferBytes {
+    pub fn expecting(tester: &'a mut Tester, buffer_type: i32) -> DefaultBufferBytes<'a> {
         DefaultBufferBytes {
             tester: tester,
             buffer_type: buffer_type,
@@ -42,7 +42,7 @@ pub struct DefaultHeaderMapPairs<'a> {
 }
 
 impl<'a> DefaultHeaderMapPairs<'a> {
-    pub fn expecting(tester: &'a mut Tester, map_type: i32) -> DefaultHeaderMapPairs {
+    pub fn expecting(tester: &'a mut Tester, map_type: i32) -> DefaultHeaderMapPairs<'a> {
         DefaultHeaderMapPairs {
             tester: tester,
             map_type: map_type,
