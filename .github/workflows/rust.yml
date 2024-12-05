@@ -179,6 +179,7 @@ jobs:
         cd proxy-wasm-rust-sdk/examples/hello_world && cargo build --target wasm32-unknown-unknown --release && cd ../../..
         cd proxy-wasm-rust-sdk/examples/http_auth_random && cargo build --target wasm32-unknown-unknown --release && cd ../../..
         cd proxy-wasm-rust-sdk/examples/http_headers && cargo build --target wasm32-unknown-unknown --release && cd ../../..
+        cd proxy-wasm-rust-sdk/examples/grpc_auth_random && cargo build --target wasm32-unknown-unknown --release && cd ../../..
 
     - name: Test (hello_world)
       run: target/release/examples/hello_world proxy-wasm-rust-sdk/examples/hello_world/target/wasm32-unknown-unknown/release/proxy_wasm_example_hello_world.wasm
@@ -188,6 +189,9 @@ jobs:
 
     - name: Test (http_headers)
       run: target/release/examples/http_headers proxy-wasm-rust-sdk/examples/http_headers/target/wasm32-unknown-unknown/release/proxy_wasm_example_http_headers.wasm -a
+
+    - name: Test (grpc_auth_random)
+      run: target/release/examples/grpc_auth_random proxy-wasm-rust-sdk/examples/grpc_auth_random/target/wasm32-unknown-unknown/release/proxy_wasm_example_grpc_auth_random.wasm
 
   outdated:
     runs-on: ubuntu-latest

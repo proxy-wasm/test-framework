@@ -19,52 +19,44 @@ use structopt::StructOpt;
 
 fn main() -> Result<()> {
     let args = tester::MockSettings::from_args();
-    let mut http_auth_random = tester::mock(args)?;
+    let mut module = tester::mock(args)?;
 
-    http_auth_random
-        .call_start()
-        .execute_and_expect(ReturnType::None)?;
+    module.call_start().execute_and_expect(ReturnType::None)?;
 
     let root_context = 1;
-    http_auth_random
+    module
         .call_proxy_on_context_create(root_context, 0)
         .execute_and_expect(ReturnType::None)?;
 
     let http_context = 2;
-    http_auth_random
+    module
         .call_proxy_on_context_create(http_context, root_context)
         .execute_and_expect(ReturnType::None)?;
 
-    http_auth_random
+    let token_id = 42;
+    module
         .call_proxy_on_request_headers(http_context, 0, false)
-        .expect_http_call(
-            Some("httpbin"),
-            Some(vec![
-                (":method", "GET"),
-                (":path", "/bytes/1"),
-                (":authority", "httpbin.org"),
-            ]),
-            None,
-            Some(vec![]),
-            Some(1 * 10u64.pow(3)),
+        .expect_get_header_map_value(Some(MapType::HttpRequestHeaders), Some("content-type"))
+        .returning(Some("application/grpc"))
+        .expect_get_header_map_value(Some(MapType::HttpRequestHeaders), Some(":path"))
+        .returning(Some("/someService/someService.someMethod"))
+        .expect_grpc_call(
+            Some("grpcbin"),
+            Some("grpcbin.GRPCBin"),
+            Some("RandomError"),
+            Some(&[0, 0, 0, 0]),
+            Some(&[]),
+            Some(1000), // 1 sec as millis
         )
-        .returning(Some(0))
+        .returning(Some(token_id))
         .execute_and_expect(ReturnType::Action(Action::Pause))?;
 
-    let buffer_data = "custom_developer_body";
-    http_auth_random
-        .call_proxy_on_http_call_response(http_context, 0, 0, buffer_data.len() as i32, 0)
-        .expect_get_buffer_bytes(Some(BufferType::HttpCallResponseBody))
-        .returning(Some(buffer_data.as_bytes()))
-        .expect_send_local_response(
-            Some(403),
-            Some("Access forbidden.\n"),
-            Some(vec![("Powered-By", "proxy-wasm")]),
-            Some(-1),
-        )
+    module
+        .call_proxy_on_grpc_receive(http_context, token_id as i32, 0 as i32)
+        .expect_log(Some(LogLevel::Info), Some("Access granted."))
         .execute_and_expect(ReturnType::None)?;
 
-    http_auth_random
+    module
         .call_proxy_on_response_headers(http_context, 0, false)
         .expect_replace_header_map_value(
             Some(MapType::HttpResponseHeaders),
