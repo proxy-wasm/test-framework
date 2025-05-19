@@ -685,4 +685,6 @@ impl Expect {
             }
         }
     }
+
+    pub fn set_expect_define_metric(&mut self) {}
 }

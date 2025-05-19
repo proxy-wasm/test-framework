@@ -1642,21 +1642,22 @@ fn get_hostfunc(
         }
 
         /* ---------------------------------- Metrics ---------------------------------- */
-        "proxy_define_metric" => {
-            Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
-                // Default Function:
-                // Expectation:
-                println!(
-                    "[vm->host] proxy_define_metric() -> (...) status: {:?}",
-                    get_status()
-                );
+        "proxy_define_metric" => Some(Func::wrap(
+            store,
+            |_caller: Caller<'_, ()>,
+             metric_type: i32,
+             name_data: i32,
+             name_size: i32,
+             return_id: i32|
+             -> i32 {
+                println!("[vm->host] proxy_define_metric({metric_type}, {name_data}, {name_size})");
                 println!(
                     "[vm<-host] proxy_define_metric() -> (..) return: {:?}",
                     Status::InternalFailure
                 );
                 return Status::InternalFailure as i32;
-            }))
-        }
+            },
+        )),
 
         "proxy_increment_metric" => {
             Some(Func::wrap(store, |_caller: Caller<'_, ()>| -> i32 {
