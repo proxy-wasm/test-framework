@@ -218,3 +218,31 @@ impl<'a> ExpectGetProperty<'a> {
         self.tester
     }
 }
+
+pub struct ExpectDefineMetric<'a> {
+    tester: &'a mut Tester,
+    metric_type: Option<i32>,
+    name: Option<&'static str>,
+}
+
+impl<'a> ExpectDefineMetric<'a> {
+    pub fn expecting(
+        tester: &'a mut Tester,
+        metric_type: Option<i32>,
+        name: Option<&'static str>,
+    ) -> ExpectDefineMetric<'a> {
+        ExpectDefineMetric {
+            tester,
+            metric_type,
+            name,
+        }
+    }
+
+    pub fn returning(&mut self, metric_id: Option<i32>) -> &mut Tester {
+        self.tester
+            .get_expect_handle()
+            .staged
+            .set_expect_define_metric(self.metric_type, self.name, metric_id);
+        self.tester
+    }
+}

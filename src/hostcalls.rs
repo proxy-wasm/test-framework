@@ -1644,13 +1644,47 @@ fn get_hostfunc(
         /* ---------------------------------- Metrics ---------------------------------- */
         "proxy_define_metric" => Some(Func::wrap(
             store,
-            |_caller: Caller<'_, ()>,
+            |caller: Caller<'_, ()>,
              metric_type: i32,
              name_data: i32,
              name_size: i32,
-             return_id: i32|
+             return_metric_id: i32|
              -> i32 {
                 println!("[vm->host] proxy_define_metric({metric_type}, {name_data}, {name_size})");
+
+                let mem = match caller.get_export("memory") {
+                    Some(Extern::Memory(mem)) => mem,
+                    _ => {
+                        println!("Error: proxy_define_metric cannot get export \"memory\"");
+                        println!(
+                            "[vm<-host] proxy_define_metric(...) -> (return_metric_id) return: {:?}",
+                            Status::InternalFailure
+                        );
+                        return Status::InternalFailure as i32;
+                    }
+                };
+
+                let name_raw = read_bytes(&caller, mem, name_data, name_size).unwrap();
+
+                println!("[vm->host] proxy_define_metric({metric_type}, {name_raw:?})");
+
+                let metric_id = match EXPECT
+                    .lock()
+                    .unwrap()
+                    .staged
+                    .get_expect_define_metric(metric_type, name_raw)
+                {
+                    Some(expect_property_value) => expect_property_value,
+                    None => {
+                        println!(
+                            "[vm->host] proxy_get_property(...) -> NotFound, status: {:?}",
+                            get_status()
+                        );
+                        assert_ne!(get_status(), ExpectStatus::Failed);
+                        return Status::NotFound as i32;
+                    }
+                };
+
                 println!(
                     "[vm<-host] proxy_define_metric() -> (..) return: {:?}",
                     Status::InternalFailure

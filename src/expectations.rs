@@ -99,6 +99,7 @@ pub struct Expect {
         Result<u32, Status>,
     )>,
     get_property_value: Vec<(Option<Bytes>, Option<Bytes>)>,
+    define_metric_value: Vec<(Option<i32>, Option<String>, Option<i32>)>,
 }
 
 impl Expect {
@@ -121,6 +122,7 @@ impl Expect {
             http_call: vec![],
             grpc_call: vec![],
             get_property_value: vec![],
+            define_metric_value: vec![],
         }
     }
 
@@ -686,5 +688,49 @@ impl Expect {
         }
     }
 
-    pub fn set_expect_define_metric(&mut self) {}
+    pub fn set_expect_define_metric(
+        &mut self,
+        metric_type: Option<i32>,
+        name: Option<&str>,
+        metric_id: Option<i32>,
+    ) {
+        self.expect_count += 1;
+        self.define_metric_value
+            .push((metric_type, name.map(|data| data.to_string()), metric_id));
+    }
+
+    pub fn get_expect_define_metric(&mut self, metric_type: i32, name_raw: &[u8]) -> Option<i32> {
+        match self.define_metric_value.len() {
+            0 => {
+                if !self.allow_unexpected {
+                    self.expect_count -= 1;
+                }
+                set_status(ExpectStatus::Unexpected);
+                None
+            }
+            _ => {
+                self.expect_count -= 1;
+                let defined_metric_tuple = self.define_metric_value.remove(0);
+                let mut expect_status =
+                    metric_type == defined_metric_tuple.0.unwrap_or(metric_type);
+
+                match std::str::from_utf8(name_raw) {
+                    Ok(v) => {
+                        expect_status = expect_status
+                            && defined_metric_tuple
+                                .1
+                                .map(|expected_name| expected_name == v)
+                                .unwrap_or(true);
+                    }
+                    Err(_) => {
+                        set_status(ExpectStatus::Failed);
+                        return None;
+                    }
+                }
+
+                set_expect_status(expect_status);
+                defined_metric_tuple.2
+            }
+        }
+    }
 }
